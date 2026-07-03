@@ -1,4 +1,4 @@
-# 🎓 E-Learning LMS - SMKN 2 Kuningan
+# 🎓 E-Learning LMS
 
 Learning Management System (LMS) berbasis web untuk SMKN 2 Kuningan yang memudahkan pengelolaan pembelajaran, tugas, nilai, dan absensi siswa.
 
