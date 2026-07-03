@@ -235,14 +235,5 @@ This project is licensed under the MIT License.
 ## 👥 Team
 
 - **Developer**: [Your Name]
-- **Client**: SMKN 2 Kuningan
-
-## 📞 Contact
-
-Untuk pertanyaan atau dukungan, silakan hubungi:
-- Email: your.email@example.com
-- GitHub: [@yourusername](https://github.com/yourusername)
 
 ---
-
-**Made with ❤️ for SMKN 2 Kuningan**
