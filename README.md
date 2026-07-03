@@ -63,6 +63,7 @@ Sistem ini terdiri dari:
 - Composer
 - Node.js >= 18
 - NPM atau Yarn
+- Redis (Optional, untuk cache optimization)
 
 ### 1. Clone Repository
 ```bash
@@ -70,7 +71,81 @@ git clone <repository-url>
 cd e-learning
 ```
 
-### 2. Setup Backend
+### 2. Install Redis (Optional - untuk Performance Optimization)
+
+#### Windows
+1. **Download Redis untuk Windows**
+   - Download dari: https://github.com/microsoftarchive/redis/releases
+   - Pilih versi terbaru (contoh: Redis-x64-3.0.504.msi)
+   - Install seperti aplikasi biasa
+
+2. **Atau gunakan Memurai (Redis-compatible untuk Windows)**
+   ```bash
+   # Download dari: https://www.memurai.com/
+   # Install dan jalankan sebagai Windows Service
+   ```
+
+3. **Atau gunakan Docker**
+   ```bash
+   docker run -d -p 6379:6379 --name redis redis:alpine
+   ```
+
+4. **Verifikasi Redis berjalan**
+   ```bash
+   redis-cli ping
+   # Output: PONG
+   ```
+
+#### Linux/Ubuntu
+```bash
+# Update package list
+sudo apt update
+
+# Install Redis
+sudo apt install redis-server
+
+# Start Redis service
+sudo systemctl start redis-server
+
+# Enable Redis on boot
+sudo systemctl enable redis-server
+
+# Verifikasi
+redis-cli ping
+# Output: PONG
+```
+
+#### macOS
+```bash
+# Menggunakan Homebrew
+brew install redis
+
+# Start Redis service
+brew services start redis
+
+# Verifikasi
+redis-cli ping
+# Output: PONG
+```
+
+#### Konfigurasi Redis di Laravel
+Setelah Redis terinstall, update file `.env` di `lms-backend`:
+```env
+CACHE_DRIVER=redis
+QUEUE_CONNECTION=redis
+SESSION_DRIVER=redis
+
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+```
+
+Jika tidak menggunakan Redis, gunakan file cache:
+```env
+CACHE_DRIVER=file
+```
+
+### 3. Setup Backend
 
 ```bash
 cd lms-backend
@@ -78,14 +153,24 @@ cd lms-backend
 # Install dependencies
 composer install
 
+# Install predis (Redis client untuk PHP)
+composer require predis/predis
+
 # Copy environment file
 copy .env.example .env
 
 # Generate application key
 php artisan key:generate
 
+# Konfigurasi .env sesuai kebutuhan
+# Edit CACHE_DRIVER, DB settings, dll
+
 # Run migrations & seeders
 php artisan migrate --seed
+
+# Clear & optimize cache (jika menggunakan Redis)
+php artisan cache:clear
+php artisan config:cache
 
 # Start development server
 php artisan serve
@@ -93,7 +178,7 @@ php artisan serve
 
 Backend akan berjalan di: **http://127.0.0.1:8000**
 
-### 3. Setup Frontend
+### 4. Setup Frontend
 
 ```bash
 cd lms-frontend
@@ -238,6 +323,41 @@ Sistem ini dilengkapi dengan caching mechanism untuk meningkatkan performance:
 - Response caching untuk API endpoints yang sering diakses
 - Cache management dashboard untuk admin
 - Automatic cache invalidation saat data berubah
+- Redis support untuk cache yang lebih cepat (optional)
+
+### Perintah Cache Management
+
+```bash
+# Clear semua cache
+php artisan cache:clear
+
+# Clear config cache
+php artisan config:clear
+
+# Clear route cache
+php artisan route:clear
+
+# Clear view cache
+php artisan view:clear
+
+# Optimize cache (production)
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Custom cache command
+php artisan cache:manage clear
+php artisan cache:manage optimize
+php artisan cache:manage status
+```
+
+### Monitoring Cache
+
+Akses halaman **Cache Management** di dashboard admin untuk:
+- Melihat status cache (hits, misses, size)
+- Clear cache secara manual
+- Optimize cache
+- Monitoring performance
 
 ## 📝 License
 
