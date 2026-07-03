@@ -27,25 +27,35 @@ const SiswaDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
         // Get current user from localStorage
         const user = authService.getCurrentUser();
+        
+        if (!isMounted) return;
         setCurrentUser(user);
 
         if (!user || user.role?.nama !== 'siswa') {
-          setLoading(false);
+          if (isMounted) setLoading(false);
           return;
         }
 
         const res = await dashboardService.getStats();
+        
+        if (!isMounted) return;
+        
         if (res.data) {
           setDashboardData(res.data);
         }
       } catch (error) {
         console.error('Error fetching siswa dashboard:', error);
+        
+        if (!isMounted) return;
+        
         setDashboardData({
           totalMateri: 0,
           activeTugas: 0,
@@ -59,11 +69,18 @@ const SiswaDashboard = () => {
           hadirAbsensi: 0,
         });
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchDashboardData();
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading || !dashboardData || !currentUser) {

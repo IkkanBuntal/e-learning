@@ -27,12 +27,18 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     // Load data from API
+    let isMounted = true;
+    
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
         // Fetch from API
         const res = await dashboardService.getStats();
+        
+        // Only update state if component is still mounted
+        if (!isMounted) return;
+        
         const data = res.data;
 
         // Populate percentage if not returned by backend
@@ -60,6 +66,10 @@ const AdminDashboard = () => {
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+        
+        // Only update state if component is still mounted
+        if (!isMounted) return;
+        
         // Set default data on error
         setDashboardData({
           totalUsers: 0,
@@ -75,11 +85,18 @@ const AdminDashboard = () => {
           recentActivities: [],
         });
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchDashboardData();
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading || !dashboardData) {
