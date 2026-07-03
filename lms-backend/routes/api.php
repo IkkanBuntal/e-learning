@@ -16,6 +16,7 @@ use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\PengumumanController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CacheController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +50,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('setting', [SettingController::class, 'update']);
         Route::get('laporan/siswa', [DashboardController::class, 'getLaporanSiswa']);
         Route::get('laporan/guru', [DashboardController::class, 'getLaporanGuru']);
+        
+        // Cache management routes (admin only)
+        Route::prefix('cache')->group(function () {
+            Route::get('stats', [CacheController::class, 'stats']);
+            Route::post('clear', [CacheController::class, 'clearAll']);
+            Route::post('clear-pattern', [CacheController::class, 'clearPattern']);
+            Route::post('clear/{type}', [CacheController::class, 'clearType']);
+        });
     });
 
     Route::middleware(['role:admin,guru'])->group(function () {

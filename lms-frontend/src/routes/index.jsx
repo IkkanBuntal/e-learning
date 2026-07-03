@@ -1,38 +1,58 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import AuthLayout from '../layouts/AuthLayout';
-import AppLayout from '../layouts/AppLayout';
-import Login from '../pages/auth/Login';
 import PrivateRoute from './PrivateRoute';
 
+// Eager load only critical components
+import AppLayout from '../layouts/AppLayout';
+import Login from '../pages/auth/Login';
+
+// Lazy load all other components
 // Dashboard pages
-import AdminDashboard from '../pages/admin/Dashboard';
-import GuruDashboard from '../pages/guru/Dashboard';
-import SiswaDashboard from '../pages/siswa/Dashboard';
+const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
+const GuruDashboard = lazy(() => import('../pages/guru/Dashboard'));
+const SiswaDashboard = lazy(() => import('../pages/siswa/Dashboard'));
 
 // Admin pages
-import Users from '../pages/admin/Users';
-import Jurusan from '../pages/admin/Jurusan';
-import Kelas from '../pages/admin/Kelas';
-import MataPelajaran from '../pages/admin/MataPelajaran';
-import Jadwal from '../pages/admin/Jadwal';
-import LaporanSiswa from '../pages/admin/LaporanSiswa';
-import LaporanGuru from '../pages/admin/LaporanGuru';
-import Statistik from '../pages/admin/Statistik';
-import Settings from '../pages/admin/Settings';
-import Roles from '../pages/admin/Roles';
+const Users = lazy(() => import('../pages/admin/Users'));
+const Jurusan = lazy(() => import('../pages/admin/Jurusan'));
+const Kelas = lazy(() => import('../pages/admin/Kelas'));
+const MataPelajaran = lazy(() => import('../pages/admin/MataPelajaran'));
+const Jadwal = lazy(() => import('../pages/admin/Jadwal'));
+const LaporanSiswa = lazy(() => import('../pages/admin/LaporanSiswa'));
+const LaporanGuru = lazy(() => import('../pages/admin/LaporanGuru'));
+const Statistik = lazy(() => import('../pages/admin/Statistik'));
+const Settings = lazy(() => import('../pages/admin/Settings'));
+const Roles = lazy(() => import('../pages/admin/Roles'));
 
 // Guru pages
-import GuruMateri from '../pages/guru/Materi';
-import GuruTugas from '../pages/guru/Tugas';
-import TugasSubmissions from '../pages/guru/TugasSubmissions';
-import GuruNilai from '../pages/guru/Nilai';
-import GuruAbsensi from '../pages/guru/Absensi';
+const GuruMateri = lazy(() => import('../pages/guru/Materi'));
+const GuruTugas = lazy(() => import('../pages/guru/Tugas'));
+const TugasSubmissions = lazy(() => import('../pages/guru/TugasSubmissions'));
+const GuruNilai = lazy(() => import('../pages/guru/Nilai'));
+const GuruAbsensi = lazy(() => import('../pages/guru/Absensi'));
 
 // Siswa pages
-import SiswaMateri from '../pages/siswa/Materi';
-import SiswaTugas from '../pages/siswa/Tugas';
-import SiswaNilai from '../pages/siswa/Nilai';
-import SiswaAbsensi from '../pages/siswa/Absensi';
+const SiswaMateri = lazy(() => import('../pages/siswa/Materi'));
+const SiswaTugas = lazy(() => import('../pages/siswa/Tugas'));
+const SiswaNilai = lazy(() => import('../pages/siswa/Nilai'));
+const SiswaAbsensi = lazy(() => import('../pages/siswa/Absensi'));
+
+// Loading component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <p className="mt-4 text-gray-600">Memuat halaman...</p>
+    </div>
+  </div>
+);
+
+// Wrapper component with Suspense
+const LazyComponent = ({ children }) => (
+  <Suspense fallback={<PageLoader />}>
+    {children}
+  </Suspense>
+);
 
 /**
  * Application Routes Configuration
@@ -65,47 +85,47 @@ const router = createBrowserRouter([
         children: [
           {
             path: 'dashboard',
-            element: <AdminDashboard />,
+            element: <LazyComponent><AdminDashboard /></LazyComponent>,
           },
           {
             path: 'users',
-            element: <Users />,
+            element: <LazyComponent><Users /></LazyComponent>,
           },
           {
             path: 'jurusan',
-            element: <Jurusan />,
+            element: <LazyComponent><Jurusan /></LazyComponent>,
           },
           {
             path: 'kelas',
-            element: <Kelas />,
+            element: <LazyComponent><Kelas /></LazyComponent>,
           },
           {
             path: 'mata-pelajaran',
-            element: <MataPelajaran />,
+            element: <LazyComponent><MataPelajaran /></LazyComponent>,
           },
           {
             path: 'jadwal',
-            element: <Jadwal />,
+            element: <LazyComponent><Jadwal /></LazyComponent>,
           },
           {
             path: 'roles',
-            element: <Roles />,
+            element: <LazyComponent><Roles /></LazyComponent>,
           },
           {
             path: 'laporan/siswa',
-            element: <LaporanSiswa />,
+            element: <LazyComponent><LaporanSiswa /></LazyComponent>,
           },
           {
             path: 'laporan/guru',
-            element: <LaporanGuru />,
+            element: <LazyComponent><LaporanGuru /></LazyComponent>,
           },
           {
             path: 'laporan/statistik',
-            element: <Statistik />,
+            element: <LazyComponent><Statistik /></LazyComponent>,
           },
           {
             path: 'settings',
-            element: <Settings />,
+            element: <LazyComponent><Settings /></LazyComponent>,
           },
         ],
       },
@@ -122,27 +142,27 @@ const router = createBrowserRouter([
         children: [
           {
             path: 'dashboard',
-            element: <GuruDashboard />,
+            element: <LazyComponent><GuruDashboard /></LazyComponent>,
           },
           {
             path: 'materi',
-            element: <GuruMateri />,
+            element: <LazyComponent><GuruMateri /></LazyComponent>,
           },
           {
             path: 'tugas',
-            element: <GuruTugas />,
+            element: <LazyComponent><GuruTugas /></LazyComponent>,
           },
           {
             path: 'tugas/:tugasId/submissions',
-            element: <TugasSubmissions />,
+            element: <LazyComponent><TugasSubmissions /></LazyComponent>,
           },
           {
             path: 'nilai',
-            element: <GuruNilai />,
+            element: <LazyComponent><GuruNilai /></LazyComponent>,
           },
           {
             path: 'absensi',
-            element: <GuruAbsensi />,
+            element: <LazyComponent><GuruAbsensi /></LazyComponent>,
           },
           // More guru routes can be added later
         ],
@@ -160,23 +180,23 @@ const router = createBrowserRouter([
         children: [
           {
             path: 'dashboard',
-            element: <SiswaDashboard />,
+            element: <LazyComponent><SiswaDashboard /></LazyComponent>,
           },
           {
             path: 'materi',
-            element: <SiswaMateri />,
+            element: <LazyComponent><SiswaMateri /></LazyComponent>,
           },
           {
             path: 'tugas',
-            element: <SiswaTugas />,
+            element: <LazyComponent><SiswaTugas /></LazyComponent>,
           },
           {
             path: 'nilai',
-            element: <SiswaNilai />,
+            element: <LazyComponent><SiswaNilai /></LazyComponent>,
           },
           {
             path: 'absensi',
-            element: <SiswaAbsensi />,
+            element: <LazyComponent><SiswaAbsensi /></LazyComponent>,
           },
           // More siswa routes can be added later
         ],

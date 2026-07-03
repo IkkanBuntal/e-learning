@@ -19,6 +19,7 @@ Sistem ini terdiri dari:
 - Pengumuman sekolah
 - Laporan & statistik
 - Pengaturan sistem
+- Manajemen cache (clear & optimize)
 
 ### 👨‍🏫 Guru
 - Upload materi pembelajaran
@@ -43,6 +44,7 @@ Sistem ini terdiri dari:
 - PHP 8.3
 - Laravel Sanctum (Authentication)
 - SQLite Database
+- Redis Cache (Optional)
 - Composer
 
 ### Frontend
@@ -183,6 +185,8 @@ e-learning/
 - `/api/pengumuman` - Pengumuman
 - `/api/dashboard/stats` - Dashboard statistics
 - `/api/setting` - System settings
+- `/api/cache/clear` - Clear cache (Admin only)
+- `/api/cache/status` - Cache status
 
 ## 🗄️ Database Schema
 
@@ -227,6 +231,13 @@ npm run build
 3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to branch (`git push origin feature/AmazingFeature`)
 5. Open Pull Request
+
+## ⚡ Performance Optimization
+
+Sistem ini dilengkapi dengan caching mechanism untuk meningkatkan performance:
+- Response caching untuk API endpoints yang sering diakses
+- Cache management dashboard untuk admin
+- Automatic cache invalidation saat data berubah
 
 ## 📝 License
 

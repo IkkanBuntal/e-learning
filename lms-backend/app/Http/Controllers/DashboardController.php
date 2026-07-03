@@ -12,6 +12,7 @@ use App\Models\Nilai;
 use App\Models\Absensi;
 use App\Models\PengumpulanTugas;
 use App\Models\JadwalMengajar;
+use App\Services\CacheService;
 
 class DashboardController extends Controller
 {
@@ -22,6 +23,23 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $role = $user->role ? $user->role->nama : 'siswa';
+        
+        // Cache key based on role and user ID
+        $cacheKey = CacheService::PATTERN_DASHBOARD . "{$role}:{$user->id}";
+        
+        // Use cache with 5 minutes TTL for dashboard data
+        $data = CacheService::remember($cacheKey, CacheService::TTL_SHORT, function() use ($user, $role) {
+            return $this->generateDashboardStats($user, $role);
+        });
+        
+        return response()->json($data);
+    }
+    
+    /**
+     * Generate dashboard statistics (extracted for caching)
+     */
+    private function generateDashboardStats($user, $role)
+    {
 
         // Day translation helper
         $dayMap = [
@@ -64,7 +82,7 @@ class DashboardController extends Controller
                 $jurusan->percentage = $totalSiswa > 0 ? round(($jurusan->siswa / $totalSiswa) * 100) : 0;
             }
 
-            return response()->json([
+            return [
                 'status' => 'success',
                 'data' => [
                     'totalUsers' => User::count(),
@@ -78,7 +96,7 @@ class DashboardController extends Controller
                     'totalSubmissions' => $totalSubmissions,
                     'siswaPerJurusan' => $siswaPerJurusan
                 ]
-            ]);
+            ];
         } 
         
         if ($role === 'guru') {
@@ -161,7 +179,7 @@ class DashboardController extends Controller
                 ['status' => 'Terlambat', 'count' => $terlambatCount, 'percentage' => $totalStatus > 0 ? round(($terlambatCount / $totalStatus) * 100) : 0, 'color' => 'bg-red-500'],
             ];
 
-            return response()->json([
+            return [
                 'status' => 'success',
                 'data' => [
                     'totalMateri' => $totalMateri,
@@ -174,7 +192,7 @@ class DashboardController extends Controller
                     'classPerformance' => $classPerformance,
                     'submissionStatus' => $submissionStatus
                 ]
-            ]);
+            ];
         }
 
         if ($role === 'siswa') {
@@ -272,7 +290,7 @@ class DashboardController extends Controller
             $totalAbsensi = Absensi::where('siswa_id', $siswaId)->count();
             $hadirAbsensi = Absensi::where('siswa_id', $siswaId)->where('status', 'hadir')->count();
 
-            return response()->json([
+            return [
                 'status' => 'success',
                 'data' => [
                     'totalMateri' => $totalMateri,
@@ -286,7 +304,7 @@ class DashboardController extends Controller
                     'totalAbsensi' => $totalAbsensi,
                     'hadirAbsensi' => $hadirAbsensi,
                 ]
-            ]);
+            ];
         }
     }
 
@@ -295,6 +313,26 @@ class DashboardController extends Controller
      * Get summary report for all students
      */
     public function getLaporanSiswa(Request $request)
+    {
+        // Cache key includes filters to cache different filter combinations
+        $filterKey = md5(json_encode($request->only(['jurusan', 'kelas', 'search'])));
+        $cacheKey = "laporan:siswa:{$filterKey}";
+        
+        // Cache report for 10 minutes
+        $formattedData = CacheService::remember($cacheKey, 600, function() use ($request) {
+            return $this->generateLaporanSiswa($request);
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $formattedData
+        ]);
+    }
+    
+    /**
+     * Generate student report data
+     */
+    private function generateLaporanSiswa(Request $request)
     {
         $query = User::whereHas('role', function($q) {
             $q->where('nama', 'siswa');
@@ -360,16 +398,33 @@ class DashboardController extends Controller
             $formattedData[$index] = $item;
         }
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $formattedData
-        ]);
+        return $formattedData;
     }
 
     /**
      * Get summary report for all teachers
      */
     public function getLaporanGuru(Request $request)
+    {
+        // Cache key includes filters
+        $filterKey = md5(json_encode($request->only(['search'])));
+        $cacheKey = "laporan:guru:{$filterKey}";
+        
+        // Cache report for 10 minutes
+        $formattedData = CacheService::remember($cacheKey, 600, function() use ($request) {
+            return $this->generateLaporanGuru($request);
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $formattedData
+        ]);
+    }
+    
+    /**
+     * Generate teacher report data
+     */
+    private function generateLaporanGuru(Request $request)
     {
         $query = User::whereHas('role', function($q) {
             $q->where('nama', 'guru');
@@ -421,9 +476,6 @@ class DashboardController extends Controller
             ];
         });
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $formattedData
-        ]);
+        return $formattedData;
     }
 }
