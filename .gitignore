@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+lms-frontend/dist/
+lms-frontend/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lms-backend/storage/logs/*.log
+
+# Database
+*.sqlite
+*.sqlite-journal
+lms-backend/database/database.sqlite
+
+# Laravel specific
+lms-backend/storage/framework/cache/*
+lms-backend/storage/framework/sessions/*
+lms-backend/storage/framework/views/*
+lms-backend/bootstrap/cache/*.php
+!lms-backend/storage/framework/cache/.gitignore
+!lms-backend/storage/framework/sessions/.gitignore
+!lms-backend/storage/framework/views/.gitignore
+
+# Temporary files
+*.tmp
+*.temp
