@@ -21,50 +21,64 @@ import {
 import dashboardService from '../../services/dashboardService';
 
 const AdminDashboard = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load data from API
+    // Load data from API with AbortController
     let isMounted = true;
+    const abortController = new AbortController();
     
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
-        // Fetch from API
-        const res = await dashboardService.getStats();
+        // Fetch from API with selected period
+        const res = await dashboardService.getStats(selectedPeriod);
         
-        // Only update state if component is still mounted
-        if (!isMounted) return;
+        // Only update state if component is still mounted and not aborted
+        if (!isMounted || abortController.signal.aborted) return;
         
+        console.log('📊 Dashboard response:', res);
+        
+        // res structure: { status: 'success', data: {...} }
         const data = res.data;
+        
+        console.log('📊 Raw data:', data);
+        console.log('📊 siswaPerJurusan type:', typeof data.siswaPerJurusan, 'isArray:', Array.isArray(data.siswaPerJurusan), 'value:', data.siswaPerJurusan);
 
         // Populate percentage if not returned by backend
         let totalSiswa = data.totalSiswa || 0;
-        let siswaPerJurusan = data.siswaPerJurusan || [];
-        if (siswaPerJurusan.length > 0) {
-          siswaPerJurusan = siswaPerJurusan.map(j => ({
+        let siswaPerJurusan = [];
+        
+        // Handle siswaPerJurusan - ensure it's always an array
+        if (data.siswaPerJurusan && Array.isArray(data.siswaPerJurusan) && data.siswaPerJurusan.length > 0) {
+          siswaPerJurusan = data.siswaPerJurusan.map(j => ({
+            ...j,
+            percentage: totalSiswa > 0 ? Math.round((j.siswa / totalSiswa) * 100) : 0
+          }));
+        } else if (data.siswaPerJurusan && typeof data.siswaPerJurusan === 'object' && !Array.isArray(data.siswaPerJurusan)) {
+          // If it's an object, convert to array
+          siswaPerJurusan = Object.values(data.siswaPerJurusan).map(j => ({
             ...j,
             percentage: totalSiswa > 0 ? Math.round((j.siswa / totalSiswa) * 100) : 0
           }));
         } else {
-          siswaPerJurusan = [
-            { name: 'RPL', siswa: 0, percentage: 0 },
-            { name: 'TKJ', siswa: 0, percentage: 0 },
-            { name: 'MM', siswa: 0, percentage: 0 },
-          ];
+          // Fallback: empty array
+          siswaPerJurusan = [];
         }
 
         setDashboardData({
           ...data,
           siswaPerJurusan,
-          recentActivities: data.recentActivities && data.recentActivities.length > 0 
-            ? data.recentActivities 
-            : [{ type: 'create', user: 'System', action: 'memuat', target: 'dashboard data', time: 'Baru saja' }],
+          recentActivities: data.recentActivities || []
         });
       } catch (error) {
+        // Ignore abort errors
+        if (error.name === 'AbortError' || abortController.signal.aborted) {
+          return;
+        }
         console.error('Error fetching dashboard data:', error);
         
         // Only update state if component is still mounted
@@ -96,13 +110,35 @@ const AdminDashboard = () => {
     // Cleanup function
     return () => {
       isMounted = false;
+      abortController.abort();
     };
-  }, []);
+  }, [selectedPeriod]); // Re-fetch when period changes
 
   if (loading || !dashboardData) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-9 w-16 bg-gray-200 rounded-lg animate-pulse"></div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-4"></div>
+              <div className="h-8 w-16 bg-gray-200 rounded animate-pulse mb-2"></div>
+              <div className="h-3 w-32 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -238,21 +274,28 @@ const AdminDashboard = () => {
             </h3>
           </div>
           <div className="space-y-4">
-            {jurusanDistribution.map((jurusan, index) => (
-              <div key={index}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-900">{jurusan.name}</span>
-                  <span className="text-sm text-gray-600">{jurusan.siswa} siswa</span>
+            {jurusanDistribution.length > 0 ? (
+              jurusanDistribution.map((jurusan, index) => (
+                <div key={index}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-900">{jurusan.name}</span>
+                    <span className="text-sm text-gray-600">{jurusan.siswa} siswa</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${jurusan.percentage}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">{jurusan.percentage}%</div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-primary h-2 rounded-full transition-all"
-                    style={{ width: `${jurusan.percentage}%` }}
-                  />
-                </div>
-                <div className="text-xs text-gray-500 mt-1">{jurusan.percentage}%</div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-sm">Belum ada data siswa per jurusan</p>
+                <p className="text-xs mt-1">Tambahkan siswa untuk melihat distribusi</p>
               </div>
-            ))}
+            )}
           </div>
           <div className="mt-6 pt-4 border-t">
             <Button variant="secondary" size="sm" className="w-full" icon={BarChart3}>
@@ -271,32 +314,40 @@ const AdminDashboard = () => {
             <Badge variant="info" size="sm">Live</Badge>
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto">
-            {recentActivities.map((activity, index) => (
-              <div
-                key={index}
-                className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  activity.type === 'create' ? 'bg-green-100' :
-                  activity.type === 'update' ? 'bg-blue-100' :
-                  activity.type === 'upload' ? 'bg-purple-100' :
-                  'bg-red-100'
-                }`}>
-                  {activity.type === 'create' && <Users className="w-4 h-4 text-green-600" />}
-                  {activity.type === 'update' && <Calendar className="w-4 h-4 text-blue-600" />}
-                  {activity.type === 'upload' && <BookOpen className="w-4 h-4 text-purple-600" />}
-                  {activity.type === 'delete' && <FileText className="w-4 h-4 text-red-600" />}
+            {recentActivities.length > 0 ? (
+              recentActivities.map((activity, index) => (
+                <div
+                  key={index}
+                  className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    activity.type === 'create' ? 'bg-green-100' :
+                    activity.type === 'update' ? 'bg-blue-100' :
+                    activity.type === 'upload' ? 'bg-purple-100' :
+                    'bg-red-100'
+                  }`}>
+                    {activity.type === 'create' && <Users className="w-4 h-4 text-green-600" />}
+                    {activity.type === 'update' && <Calendar className="w-4 h-4 text-blue-600" />}
+                    {activity.type === 'upload' && <BookOpen className="w-4 h-4 text-purple-600" />}
+                    {activity.type === 'delete' && <FileText className="w-4 h-4 text-red-600" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-900">
+                      <span className="font-medium">{activity.user}</span>
+                      {' '}{activity.action}{' '}
+                      <span className="font-medium">{activity.target}</span>
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900">
-                    <span className="font-medium">{activity.user}</span>
-                    {' '}{activity.action}{' '}
-                    <span className="font-medium">{activity.target}</span>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-sm">Belum ada aktivitas dalam periode ini</p>
+                <p className="text-xs mt-1">Aktivitas akan muncul saat ada kegiatan di sistem</p>
               </div>
-            ))}
+            )}
           </div>
         </Card>
       </div>

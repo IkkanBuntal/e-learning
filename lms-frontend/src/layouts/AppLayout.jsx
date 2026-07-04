@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
-import PageTransition from '../components/common/PageTransition';
 
 /**
  * AppLayout Component
@@ -12,7 +10,6 @@ import PageTransition from '../components/common/PageTransition';
  */
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
 
   /**
    * Toggle sidebar (mobile)
@@ -40,11 +37,7 @@ const AppLayout = () => {
 
         {/* Page content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <AnimatePresence mode="wait">
-            <PageTransition key={location.pathname}>
-              <Outlet />
-            </PageTransition>
-          </AnimatePresence>
+          <Outlet />
         </main>
       </div>
     </div>

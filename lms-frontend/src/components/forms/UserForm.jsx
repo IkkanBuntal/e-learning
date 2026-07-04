@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Button from '../common/Button';
 import Input from '../common/Input';
+import api from '../../services/api';
 
 /**
  * UserForm Component
@@ -36,6 +37,22 @@ const UserForm = ({ user = null, onSubmit, onCancel, loading = false }) => {
   });
 
   const [errors, setErrors] = useState({});
+  const [kelasList, setKelasList] = useState([]);
+
+  // Fetch kelas list
+  useEffect(() => {
+    const fetchKelas = async () => {
+      try {
+        const response = await api.get('/kelas');
+        if (response.data?.status === 'success' && response.data?.data) {
+          setKelasList(response.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching kelas:', error);
+      }
+    };
+    fetchKelas();
+  }, []);
 
   // Load user data in edit mode
   useEffect(() => {
@@ -136,13 +153,20 @@ const UserForm = ({ user = null, onSubmit, onCancel, loading = false }) => {
       return;
     }
 
-    // Prepare data based on role
+    // Map role name to role_id (based on your database)
+    const roleMap = {
+      'admin': 1,
+      'guru': 2,
+      'siswa': 3
+    };
+    
+    // Prepare data based on role - map to backend field names
     const submitData = {
-      name: formData.name,
+      nama: formData.name,           // Backend expects 'nama' not 'name'
       email: formData.email,
-      role: formData.role,
-      address: formData.address,
-      is_active: formData.is_active,
+      role_id: roleMap[formData.role] || formData.role,  // Convert role name to ID
+      alamat: formData.address || null,      // Backend expects 'alamat' not 'address'
+      aktif: formData.is_active ? 1 : 0,     // Backend expects boolean as 1/0
     };
 
     // Add password only if provided
@@ -152,18 +176,19 @@ const UserForm = ({ user = null, onSubmit, onCancel, loading = false }) => {
 
     // Add role-specific fields
     if (formData.role === 'guru') {
-      submitData.nip = formData.nip;
-      submitData.phone = formData.phone;
+      submitData.nip = formData.nip || null;
+      submitData.no_telp = formData.phone || null;  // Backend expects 'no_telp'
     }
 
     if (formData.role === 'siswa') {
-      submitData.nis = formData.nis;
-      submitData.kelas_id = formData.kelas_id;
-      submitData.parent_phone = formData.parent_phone;
-      submitData.gender = formData.gender;
-      submitData.birth_date = formData.birth_date;
+      submitData.nis = formData.nis || null;
+      submitData.kelas_id = formData.kelas_id || null;
+      submitData.no_telp = formData.parent_phone || null;  // Backend expects 'no_telp'
+      submitData.jenis_kelamin = formData.gender || null;  // Backend expects 'jenis_kelamin'
+      submitData.tanggal_lahir = formData.birth_date || null;  // Backend expects 'tanggal_lahir'
     }
 
+    console.log('📤 Submitting data:', submitData);
     onSubmit(submitData);
   };
 
@@ -360,12 +385,11 @@ const UserForm = ({ user = null, onSubmit, onCancel, loading = false }) => {
                 disabled={loading}
               >
                 <option value="">Pilih Kelas</option>
-                <option value="1">X RPL 1</option>
-                <option value="2">X RPL 2</option>
-                <option value="3">XI RPL 1</option>
-                <option value="4">XI RPL 2</option>
-                <option value="5">XII RPL 1</option>
-                <option value="6">XII RPL 2</option>
+                {kelasList.map((kelas) => (
+                  <option key={kelas.id} value={kelas.id}>
+                    {kelas.nama}
+                  </option>
+                ))}
               </select>
               {errors.kelas_id && (
                 <p className="mt-1 text-sm text-red-600">{errors.kelas_id}</p>

@@ -367,4 +367,37 @@ This project is licensed under the MIT License.
 
 - **Developer**: [Your Name]
 
+## 📝 Changelog
+
+### Latest Updates (2026-07-05)
+
+#### UI/UX Improvements
+- ✨ **Modern Loading States**: Implementasi skeleton loading yang lebih smooth dan modern di semua halaman
+- 🎨 **Enhanced Visual Design**: 
+  - Gradient borders dan backgrounds untuk cards
+  - Improved animations menggunakan Framer Motion
+  - Hover effects dan transitions yang lebih halus
+  - Modern stat cards dengan gradient icons
+- 📊 **Dashboard Enhancements**:
+  - Redesign dashboard admin dengan stat cards yang lebih informatif
+  - Chart area yang lebih modern dengan gradient fills
+  - Activity feed dengan timeline design
+  - Improved dashboard untuk guru dan siswa
+
+#### Performance Optimizations
+- ⚡ **Smart Loading**: Skeleton loading menggantikan spinner untuk UX yang lebih baik
+- 🚀 **Optimized Animations**: Smooth transitions dengan Framer Motion
+- 💾 **Cache Enhancement**: Improved dashboard stats caching di backend
+
+#### Technical Improvements
+- 🔧 **CORS Configuration**: Fixed CORS settings untuk production
+- 📦 **Component Structure**: Removed redundant LoadingSpinner component
+- 🎯 **Code Quality**: Cleaner code structure dan better component composition
+- 🔒 **Security**: Enhanced validation dan error handling
+
+#### Bug Fixes
+- 🐛 Fixed loading states tidak konsisten
+- 🐛 Fixed CORS issues untuk production deployment
+- 🐛 Improved error handling di dashboard statistics
+
 ---

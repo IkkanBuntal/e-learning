@@ -9,7 +9,6 @@ import PageHeader from '../../components/common/PageHeader';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { getAllJurusan, createJurusan, updateJurusan, deleteJurusan } from '../../services/masterDataService';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 const Jurusan = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,7 +117,7 @@ const Jurusan = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {loadingData ? (
           <div className="p-12 flex items-center justify-center">
-            <LoadingSpinner />
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : (
           <div className="overflow-x-auto">

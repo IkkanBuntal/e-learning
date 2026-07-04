@@ -1,10 +1,61 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>lms-frontend</title>
+    
+    <!-- Preconnect for faster loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Preload critical font -->
+    <link 
+      rel="preload" 
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" 
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+    </noscript>
+    
+    <!-- DNS Prefetch for API -->
+    <link rel="dns-prefetch" href="http://127.0.0.1:8000" />
+    
+    <title>E-LearningKu - Platform Pembelajaran Digital</title>
+    <meta name="description" content="Platform pembelajaran digital terpadu untuk siswa, guru, dan admin" />
+    
+    <!-- Critical CSS - Inline untuk LCP optimization -->
+    <style>
+      /* Prevent layout shift */
+      #root {
+        min-height: 100vh;
+      }
+      
+      /* Critical font loading */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      /* Prevent FOUC (Flash of Unstyled Content) */
+      .bg-gray-50 { background-color: #f9fafb; }
+      .text-gray-900 { color: #111827; }
+      .font-bold { font-weight: 700; }
+      .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+      
+      /* Loading state */
+      .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

@@ -23,13 +23,14 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $role = $user->role ? $user->role->nama : 'siswa';
+        $period = $request->input('period', 'today'); // today, week, month, year
         
-        // Cache key based on role and user ID
-        $cacheKey = CacheService::PATTERN_DASHBOARD . "{$role}:{$user->id}";
+        // Cache key based on role, user ID, and period
+        $cacheKey = CacheService::PATTERN_DASHBOARD . "{$role}:{$user->id}:{$period}";
         
         // Use cache with 5 minutes TTL for dashboard data
-        $data = CacheService::remember($cacheKey, CacheService::TTL_SHORT, function() use ($user, $role) {
-            return $this->generateDashboardStats($user, $role);
+        $data = CacheService::remember($cacheKey, CacheService::TTL_SHORT, function() use ($user, $role, $period) {
+            return $this->generateDashboardStats($user, $role, $period);
         });
         
         return response()->json($data);
@@ -38,9 +39,11 @@ class DashboardController extends Controller
     /**
      * Generate dashboard statistics (extracted for caching)
      */
-    private function generateDashboardStats($user, $role)
+    private function generateDashboardStats($user, $role, $period = 'today')
     {
-
+        // Get date range based on period
+        $dateRange = $this->getDateRange($period);
+        
         // Day translation helper
         $dayMap = [
             'Monday' => 'Senin',
@@ -57,16 +60,16 @@ class DashboardController extends Controller
             $totalSiswa = User::whereHas('role', function($q) { $q->where('nama', 'siswa'); })->count();
             $totalGuru = User::whereHas('role', function($q) { $q->where('nama', 'guru'); })->count();
             $totalKelas = Kelas::count();
-            $totalMateri = Materi::count();
-            $totalTugas = Tugas::count();
+            $totalMateri = Materi::whereBetween('created_at', $dateRange)->count();
+            $totalTugas = Tugas::whereBetween('created_at', $dateRange)->count();
             
-            $avgNilai = Nilai::avg('nilai') ?? 0;
+            $avgNilai = Nilai::whereBetween('created_at', $dateRange)->avg('nilai') ?? 0;
             
-            $totalAbsensi = Absensi::count();
-            $hadirCount = Absensi::where('status', 'hadir')->count();
+            $totalAbsensi = Absensi::whereBetween('tanggal', $dateRange)->count();
+            $hadirCount = Absensi::whereBetween('tanggal', $dateRange)->where('status', 'hadir')->count();
             $avgKehadiran = $totalAbsensi > 0 ? ($hadirCount / $totalAbsensi) * 100 : 0;
             
-            $totalSubmissions = PengumpulanTugas::count();
+            $totalSubmissions = PengumpulanTugas::whereBetween('created_at', $dateRange)->count();
             
             // Siswa per jurusan distribution
             $siswaPerJurusan = DB::table('users')
@@ -94,7 +97,8 @@ class DashboardController extends Controller
                     'avgNilai' => round($avgNilai, 1),
                     'avgKehadiran' => round($avgKehadiran, 1),
                     'totalSubmissions' => $totalSubmissions,
-                    'siswaPerJurusan' => $siswaPerJurusan
+                    'siswaPerJurusan' => $siswaPerJurusan->values()->toArray(), // Force to array
+                    'recentActivities' => $this->getRecentActivities($dateRange)
                 ]
             ];
         } 
@@ -102,14 +106,17 @@ class DashboardController extends Controller
         if ($role === 'guru') {
             $guruId = $user->id;
             
-            $totalMateri = Materi::where('guru_id', $guruId)->count();
-            $totalTugas = Tugas::where('guru_id', $guruId)->count();
-            $activeTugas = Tugas::where('guru_id', $guruId)->where('deadline', '>', now())->count();
+            $totalMateri = Materi::where('guru_id', $guruId)->whereBetween('created_at', $dateRange)->count();
+            $totalTugas = Tugas::where('guru_id', $guruId)->whereBetween('created_at', $dateRange)->count();
+            $activeTugas = Tugas::where('guru_id', $guruId)
+                ->whereBetween('created_at', $dateRange)
+                ->where('deadline', '>', now())
+                ->count();
             
             // Pending submissions
             $pendingSubmissions = PengumpulanTugas::whereHas('tugas', function($q) use ($guruId) {
                 $q->where('guru_id', $guruId);
-            })->whereNull('nilai')->count();
+            })->whereBetween('created_at', $dateRange)->whereNull('nilai')->count();
             
             // Classes taught
             $taughtKelasIds = JadwalMengajar::where('guru_id', $guruId)->distinct('kelas_id')->pluck('kelas_id');
@@ -141,15 +148,15 @@ class DashboardController extends Controller
                 });
 
             // Class performance
-            $classPerformance = Kelas::whereIn('id', $taughtKelasIds)->get()->map(function($k) use ($guruId) {
+            $classPerformance = Kelas::whereIn('id', $taughtKelasIds)->get()->map(function($k) use ($guruId, $dateRange) {
                 $studentCount = User::where('kelas_id', $k->id)->whereHas('role', function($q) { $q->where('nama', 'siswa'); })->count();
                 
                 $avgScore = Nilai::whereHas('siswa', function($q) use ($k) {
                     $q->where('kelas_id', $k->id);
-                })->where('guru_id', $guruId)->avg('nilai') ?? 0;
+                })->where('guru_id', $guruId)->whereBetween('created_at', $dateRange)->avg('nilai') ?? 0;
                 
-                $totalAbsensi = Absensi::where('kelas_id', $k->id)->where('guru_id', $guruId)->count();
-                $hadirCount = Absensi::where('kelas_id', $k->id)->where('guru_id', $guruId)->where('status', 'hadir')->count();
+                $totalAbsensi = Absensi::where('kelas_id', $k->id)->where('guru_id', $guruId)->whereBetween('tanggal', $dateRange)->count();
+                $hadirCount = Absensi::where('kelas_id', $k->id)->where('guru_id', $guruId)->whereBetween('tanggal', $dateRange)->where('status', 'hadir')->count();
                 $attendance = $totalAbsensi > 0 ? round(($hadirCount / $totalAbsensi) * 100) : 0;
                 
                 return [
@@ -163,13 +170,17 @@ class DashboardController extends Controller
 
             // Submission status calculation
             $totalExpected = 0;
-            $tugasList = Tugas::where('guru_id', $guruId)->get();
+            $tugasList = Tugas::where('guru_id', $guruId)->whereBetween('created_at', $dateRange)->get();
             foreach ($tugasList as $t) {
                 $totalExpected += User::where('kelas_id', $t->kelas_id)->whereHas('role', function($q) { $q->where('nama', 'siswa'); })->count();
             }
             
-            $sudahCount = PengumpulanTugas::whereHas('tugas', function($q) use ($guruId) { $q->where('guru_id', $guruId); })->where('status', 'Tepat Waktu')->count();
-            $terlambatCount = PengumpulanTugas::whereHas('tugas', function($q) use ($guruId) { $q->where('guru_id', $guruId); })->where('status', 'Terlambat')->count();
+            $sudahCount = PengumpulanTugas::whereHas('tugas', function($q) use ($guruId) { $q->where('guru_id', $guruId); })
+                ->whereBetween('created_at', $dateRange)
+                ->where('status', 'Tepat Waktu')->count();
+            $terlambatCount = PengumpulanTugas::whereHas('tugas', function($q) use ($guruId) { $q->where('guru_id', $guruId); })
+                ->whereBetween('created_at', $dateRange)
+                ->where('status', 'Terlambat')->count();
             $belumCount = max(0, $totalExpected - ($sudahCount + $terlambatCount));
             $totalStatus = $belumCount + $sudahCount + $terlambatCount;
 
@@ -199,21 +210,23 @@ class DashboardController extends Controller
             $siswaId = $user->id;
             $kelasId = $user->kelas_id;
 
-            $totalMateri = Materi::where('kelas_id', $kelasId)->count();
+            $totalMateri = Materi::where('kelas_id', $kelasId)->whereBetween('created_at', $dateRange)->count();
             
             $activeTugas = Tugas::where('kelas_id', $kelasId)
+                ->whereBetween('created_at', $dateRange)
                 ->where('deadline', '>', now())
                 ->whereDoesntHave('pengumpulanTugas', function($q) use ($siswaId) {
                     $q->where('siswa_id', $siswaId);
                 })->count();
                 
             $overdueTugas = Tugas::where('kelas_id', $kelasId)
+                ->whereBetween('created_at', $dateRange)
                 ->where('deadline', '<', now())
                 ->whereDoesntHave('pengumpulanTugas', function($q) use ($siswaId) {
                     $q->where('siswa_id', $siswaId);
                 })->count();
 
-            $rataRataNilai = Nilai::where('siswa_id', $siswaId)->avg('nilai') ?? 0;
+            $rataRataNilai = Nilai::where('siswa_id', $siswaId)->whereBetween('created_at', $dateRange)->avg('nilai') ?? 0;
 
             // Today's schedule
             $todaySchedule = JadwalMengajar::where('kelas_id', $kelasId)
@@ -241,7 +254,7 @@ class DashboardController extends Controller
                 });
 
             // Learning progress
-            $grades = Nilai::where('siswa_id', $siswaId)->with(['mataPelajaran'])->get();
+            $grades = Nilai::where('siswa_id', $siswaId)->whereBetween('created_at', $dateRange)->with(['mataPelajaran'])->get();
             $mapelNilai = [];
             foreach ($grades as $g) {
                 $mapelId = $g->mata_pelajaran_id;
@@ -267,6 +280,7 @@ class DashboardController extends Controller
 
             // Upcoming deadlines
             $upcomingDeadlines = Tugas::where('kelas_id', $kelasId)
+                ->whereBetween('created_at', $dateRange)
                 ->where('deadline', '>', now())
                 ->whereDoesntHave('pengumpulanTugas', function($q) use ($siswaId) {
                     $q->where('siswa_id', $siswaId);
@@ -287,8 +301,8 @@ class DashboardController extends Controller
                     ];
                 });
 
-            $totalAbsensi = Absensi::where('siswa_id', $siswaId)->count();
-            $hadirAbsensi = Absensi::where('siswa_id', $siswaId)->where('status', 'hadir')->count();
+            $totalAbsensi = Absensi::where('siswa_id', $siswaId)->whereBetween('tanggal', $dateRange)->count();
+            $hadirAbsensi = Absensi::where('siswa_id', $siswaId)->whereBetween('tanggal', $dateRange)->where('status', 'hadir')->count();
 
             return [
                 'status' => 'success',
@@ -477,5 +491,165 @@ class DashboardController extends Controller
         });
 
         return $formattedData;
+    }
+    
+    /**
+     * Get recent activities for dashboard
+     */
+    private function getRecentActivities($dateRange)
+    {
+        $activities = [];
+        
+        // Recent users (last 10)
+        $recentUsers = User::whereBetween('created_at', $dateRange)
+            ->with('role')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentUsers as $user) {
+            $activities[] = [
+                'type' => 'create',
+                'user' => 'Admin',
+                'action' => 'menambahkan',
+                'target' => ($user->role ? $user->role->nama : 'user') . ' ' . $user->nama,
+                'time' => $this->timeAgo($user->created_at),
+                'timestamp' => $user->created_at->timestamp
+            ];
+        }
+        
+        // Recent materi (last 10)
+        $recentMateri = Materi::whereBetween('created_at', $dateRange)
+            ->with(['guru', 'mataPelajaran'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentMateri as $materi) {
+            $activities[] = [
+                'type' => 'upload',
+                'user' => $materi->guru ? $materi->guru->nama : 'Guru',
+                'action' => 'mengupload materi',
+                'target' => $materi->mataPelajaran ? $materi->mataPelajaran->nama : $materi->judul,
+                'time' => $this->timeAgo($materi->created_at),
+                'timestamp' => $materi->created_at->timestamp
+            ];
+        }
+        
+        // Recent tugas (last 10)
+        $recentTugas = Tugas::whereBetween('created_at', $dateRange)
+            ->with(['guru', 'mataPelajaran'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentTugas as $tugas) {
+            $activities[] = [
+                'type' => 'create',
+                'user' => $tugas->guru ? $tugas->guru->nama : 'Guru',
+                'action' => 'membuat tugas',
+                'target' => $tugas->judul,
+                'time' => $this->timeAgo($tugas->created_at),
+                'timestamp' => $tugas->created_at->timestamp
+            ];
+        }
+        
+        // Recent submissions (last 10)
+        $recentSubmissions = PengumpulanTugas::whereBetween('created_at', $dateRange)
+            ->with(['siswa', 'tugas'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentSubmissions as $submission) {
+            $activities[] = [
+                'type' => 'upload',
+                'user' => $submission->siswa ? $submission->siswa->nama : 'Siswa',
+                'action' => 'mengumpulkan tugas',
+                'target' => $submission->tugas ? $submission->tugas->judul : 'tugas',
+                'time' => $this->timeAgo($submission->created_at),
+                'timestamp' => $submission->created_at->timestamp
+            ];
+        }
+        
+        // Recent nilai (last 10)
+        $recentNilai = Nilai::whereBetween('created_at', $dateRange)
+            ->with(['guru', 'siswa', 'mataPelajaran'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentNilai as $nilai) {
+            $activities[] = [
+                'type' => 'update',
+                'user' => $nilai->guru ? $nilai->guru->nama : 'Guru',
+                'action' => 'menginput nilai untuk',
+                'target' => $nilai->siswa ? $nilai->siswa->nama : 'siswa',
+                'time' => $this->timeAgo($nilai->created_at),
+                'timestamp' => $nilai->created_at->timestamp
+            ];
+        }
+        
+        // Sort by timestamp descending and take 10 most recent
+        usort($activities, function($a, $b) {
+            return $b['timestamp'] <=> $a['timestamp'];
+        });
+        
+        // Remove timestamp field and take only 10
+        $activities = array_slice($activities, 0, 10);
+        foreach ($activities as &$activity) {
+            unset($activity['timestamp']);
+        }
+        
+        return $activities;
+    }
+    
+    /**
+     * Convert timestamp to human readable time ago
+     */
+    private function timeAgo($datetime)
+    {
+        $now = now();
+        $diff = $now->diffInSeconds($datetime);
+        
+        if ($diff < 60) {
+            return 'Baru saja';
+        } elseif ($diff < 3600) {
+            $minutes = floor($diff / 60);
+            return $minutes . ' menit yang lalu';
+        } elseif ($diff < 86400) {
+            $hours = floor($diff / 3600);
+            return $hours . ' jam yang lalu';
+        } elseif ($diff < 604800) {
+            $days = floor($diff / 86400);
+            return $days . ' hari yang lalu';
+        } else {
+            return $datetime->format('d M Y');
+        }
+    }
+    
+    /**
+     * Get date range based on period
+     */
+    private function getDateRange($period)
+    {
+        $now = now();
+        
+        switch ($period) {
+            case 'today':
+                return [$now->copy()->startOfDay(), $now->copy()->endOfDay()];
+                
+            case 'week':
+                return [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()];
+                
+            case 'month':
+                return [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()];
+                
+            case 'year':
+                return [$now->copy()->startOfYear(), $now->copy()->endOfYear()];
+                
+            default:
+                return [$now->copy()->startOfDay(), $now->copy()->endOfDay()];
+        }
     }
 }

@@ -21,6 +21,7 @@ import dashboardService from '../../services/dashboardService';
 
 const GuruDashboard = () => {
   const [selectedClass, setSelectedClass] = useState('all');
+  const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [dashboardData, setDashboardData] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,11 +44,14 @@ const GuruDashboard = () => {
           return;
         }
 
-        const res = await dashboardService.getStats();
+        const res = await dashboardService.getStats(selectedPeriod);
         
         if (!isMounted) return;
         
-        if (res.data) {
+        console.log('📊 Guru dashboard response:', res);
+        
+        // res structure: { status: 'success', data: {...} }
+        if (res && res.data) {
           setDashboardData(res.data);
         }
       } catch (error) {
@@ -79,7 +83,7 @@ const GuruDashboard = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedPeriod]); // Re-fetch when period changes
 
   if (loading || !dashboardData || !currentUser) {
     return (
@@ -135,16 +139,31 @@ const GuruDashboard = () => {
         title="Dashboard Guru"
         subtitle={`Selamat datang, ${currentUser.name} — Kelola materi, tugas, dan penilaian siswa`}
         actions={
-          <select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-          >
-            <option value="all">Semua Kelas</option>
-            {dashboardData.classPerformance.map(cls => (
+          <div className="flex gap-2">
+            {['today', 'week', 'month', 'year'].map((period) => (
+              <button
+                key={period}
+                onClick={() => setSelectedPeriod(period)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
+                  selectedPeriod === period
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {period}
+              </button>
+            ))}
+            <select
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+            >
+              <option value="all">Semua Kelas</option>
+              {dashboardData.classPerformance.map(cls => (
               <option key={cls.id} value={cls.id.toString()}>{cls.name}</option>
             ))}
           </select>
+          </div>
         }
       />
 

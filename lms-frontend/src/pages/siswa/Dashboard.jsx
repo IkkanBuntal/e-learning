@@ -21,7 +21,7 @@ import { authService } from '../../services/authService';
 import dashboardService from '../../services/dashboardService';
 
 const SiswaDashboard = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [dashboardData, setDashboardData] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,11 +44,14 @@ const SiswaDashboard = () => {
           return;
         }
 
-        const res = await dashboardService.getStats();
+        const res = await dashboardService.getStats(selectedPeriod);
         
         if (!isMounted) return;
         
-        if (res.data) {
+        console.log('📊 Siswa dashboard response:', res);
+        
+        // res structure: { status: 'success', data: {...} }
+        if (res && res.data) {
           setDashboardData(res.data);
         }
       } catch (error) {
@@ -81,7 +84,7 @@ const SiswaDashboard = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedPeriod]); // Re-fetch when period changes
 
   if (loading || !dashboardData || !currentUser) {
     return (
@@ -131,17 +134,17 @@ const SiswaDashboard = () => {
         subtitle={`Selamat datang, ${currentUser.name}${currentUser.kelas ? ` — ${currentUser.kelas.nama}` : ''}`}
         actions={
           <div className="flex gap-2">
-            {['week', 'month'].map((period) => (
+            {['today', 'week', 'month', 'year'].map((period) => (
               <button
                 key={period}
                 onClick={() => setSelectedPeriod(period)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
                   selectedPeriod === period
                     ? 'bg-primary text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {period === 'week' ? 'Minggu Ini' : 'Bulan Ini'}
+                {period}
               </button>
             ))}
           </div>

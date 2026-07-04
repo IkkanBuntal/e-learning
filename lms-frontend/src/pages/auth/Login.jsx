@@ -255,9 +255,9 @@ const Login = () => {
 
           {/* Form Card */}
           <div className="bg-white rounded-2xl shadow-xl p-6 lg:p-8">
-            {/* Header */}
+            {/* Header - Optimized for LCP */}
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2" style={{ willChange: 'transform', containIntrinsicSize: 'auto' }}>
                 Selamat Datang! 👋
               </h2>
               <p className="text-gray-600 text-sm">

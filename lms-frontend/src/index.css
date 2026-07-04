@@ -2,8 +2,15 @@
 
 @import "tailwindcss";
 
+/* Font display optimization - prevent FOIT (Flash of Invisible Text) */
+@font-face {
+  font-family: 'Poppins';
+  font-display: swap;
+  src: local('Poppins');
+}
+
 @theme {
-  --font-sans: 'Poppins', sans-serif;
+  --font-sans: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
   
   --color-primary-50: #E6EDF5;
   --color-primary-100: #CCDAEB;
