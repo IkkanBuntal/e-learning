@@ -365,7 +365,7 @@ This project is licensed under the MIT License.
 
 ## 👥 Team
 
-- **Developer**: [Your Name]
+- **Developer**: Raditya
 
 ## 📝 Changelog
 
