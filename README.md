@@ -369,7 +369,40 @@ This project is licensed under the MIT License.
 
 ## 📝 Changelog
 
-### Latest Updates (2026-07-05)
+### Latest Updates (2026-07-06)
+
+#### 🔧 Bug Fixes & Improvements
+- ✅ **Filter Tingkatan Kelas**: Fixed filter tingkatan (X, XI, XII) yang tidak menampilkan hasil
+- ✅ **Wali Kelas Management**: 
+  - Fixed wali kelas tidak muncul di tabel kelas
+  - Fixed wali kelas tidak berubah setelah edit
+  - Auto-assign wali kelas untuk data existing
+- ✅ **Delete Kelas**: Fixed delete functionality dengan route model binding
+- ✅ **Route Model Binding**: Fixed Laravel singular route parameter issue (`{kela}`)
+- ✅ **Paginated Response**: Fixed handling paginated response di UserForm, JadwalForm, dan Jadwal page
+- 🔨 **Helper Command**: Tambah command `php artisan kelas:fix-wali` untuk fix data wali kelas yang kosong
+
+#### Technical Improvements
+- 🔧 **Backend**:
+  - Enhanced route model binding di AppServiceProvider
+  - Improved KelasController dengan proper model binding
+  - Better error handling dan logging
+  - Updated KelasSeeder untuk auto-assign wali kelas
+- 🎨 **Frontend**:
+  - Fixed filter component untuk handle nilai X, XI, XII
+  - Improved form validation dan error handling
+  - Better pagination handling
+  - Enhanced data mapping untuk paginated responses
+
+#### Code Quality
+- 📝 Added comprehensive logging untuk debugging
+- 🧹 Cleanup unused code dan temporary commands
+- 📦 Better code organization dan structure
+- ✨ Improved error messages untuk better UX
+
+---
+
+### Previous Updates (2026-07-05)
 
 #### UI/UX Improvements
 - ✨ **Modern Loading States**: Implementasi skeleton loading yang lebih smooth dan modern di semua halaman
