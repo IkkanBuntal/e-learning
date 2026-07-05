@@ -14,6 +14,13 @@ class KelasSeeder extends Seeder
         $tkj = Jurusan::where('kode', 'TKJ')->first();
         $mm  = Jurusan::where('kode', 'MM')->first();
 
+        // Get some guru to assign as wali kelas
+        $guruList = \App\Models\User::whereHas('role', function($q) {
+            $q->where('nama', 'guru');
+        })->get();
+        
+        $guruIndex = 0;
+
         $kelas = [
             // RPL
             ['nama' => 'X RPL 1',   'jurusan_id' => $rpl->id, 'tingkat' => 'X',   'kapasitas' => 36, 'ruangan' => 'Lab RPL 1'],
@@ -37,6 +44,13 @@ class KelasSeeder extends Seeder
         ];
 
         foreach ($kelas as $k) {
+            // Assign wali kelas if guru available
+            if ($guruList->isNotEmpty()) {
+                $guru = $guruList[$guruIndex % $guruList->count()];
+                $k['wali_kelas'] = $guru->nama;
+                $guruIndex++;
+            }
+            
             Kelas::firstOrCreate(['nama' => $k['nama']], array_merge($k, ['aktif' => true]));
         }
     }

@@ -45,10 +45,13 @@ const UserForm = ({ user = null, onSubmit, onCancel, loading = false }) => {
       try {
         const response = await api.get('/kelas');
         if (response.data?.status === 'success' && response.data?.data) {
-          setKelasList(response.data.data);
+          // Handle paginated response
+          const kelasData = response.data.data.data || response.data.data;
+          setKelasList(Array.isArray(kelasData) ? kelasData : []);
         }
       } catch (error) {
         console.error('Error fetching kelas:', error);
+        setKelasList([]); // Set empty array on error
       }
     };
     fetchKelas();

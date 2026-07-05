@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, BookOpen } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
@@ -9,6 +9,7 @@ import PageHeader from '../../components/common/PageHeader';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import masterDataService from '../../services/masterDataService';
+import { useToast } from '../../context/ToastContext';
 
 const MataPelajaran = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,57 +21,19 @@ const MataPelajaran = () => {
   const [loadingData, setLoadingData] = useState(true);
   const [mapelList, setMapelList] = useState([]);
   const [jurusanList, setJurusanList] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Force refresh trigger
+
+  const { success, error: showError } = useToast();
 
   // Fetch data
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoadingData(true);
-        const [mapelRes, jurusanRes] = await Promise.all([
-          masterDataService.getAllMataPelajaran(),
-          masterDataService.getAllJurusan(),
-        ]);
-
-        setMapelList((mapelRes.data || []).map(m => ({
-          id: m.id,
-          kode: m.kode,
-          nama: m.nama,
-          kategori: m.kategori || 'umum',
-          jurusan: m.jurusan?.kode || 'Semua',
-          jurusan_ids: m.jurusan_id ? [m.jurusan_id] : [],
-          sks: m.sks || 4,
-          tingkat: ['10', '11', '12'],
-          is_active: m.is_active !== false,
-        })));
-        
-        setJurusanList((jurusanRes.data || []).map(j => ({ id: j.id, kode: j.kode })));
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoadingData(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  /**
-   * Handle form submit
-   */
-  const handleFormSubmit = async (data) => {
+  const fetchData = useCallback(async () => {
     try {
-      setLoading(true);
+      setLoadingData(true);
+      const [mapelRes, jurusanRes] = await Promise.all([
+        masterDataService.getAllMataPelajaran(),
+        masterDataService.getAllJurusan(),
+      ]);
 
-      if (selectedMapel) {
-        await masterDataService.updateMataPelajaran(selectedMapel.id, data);
-        alert('Mata pelajaran updated successfully!');
-      } else {
-        await masterDataService.createMataPelajaran(data);
-        alert('Mata pelajaran created successfully!');
-      }
-
-      // Reload data
-      const mapelRes = await masterDataService.getAllMataPelajaran();
       setMapelList((mapelRes.data || []).map(m => ({
         id: m.id,
         kode: m.kode,
@@ -82,12 +45,55 @@ const MataPelajaran = () => {
         tingkat: ['10', '11', '12'],
         is_active: m.is_active !== false,
       })));
+      
+      setJurusanList((jurusanRes.data || []).map(j => ({ id: j.id, kode: j.kode })));
+      
+      console.log('✅ Mata pelajaran data updated');
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      showError('Gagal memuat data mata pelajaran');
+    } finally {
+      setLoadingData(false);
+    }
+  }, [refreshTrigger, showError]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  /**
+   * Handle form submit
+   */
+  const handleFormSubmit = async (data) => {
+    console.log('📝 Form submitted with data:', data);
+    
+    try {
+      setLoading(true);
+
+      if (selectedMapel) {
+        console.log('🔄 Updating mata pelajaran ID:', selectedMapel.id);
+        await masterDataService.updateMataPelajaran(selectedMapel.id, data);
+        success('Mata pelajaran berhasil diupdate!');
+      } else {
+        console.log('➕ Creating new mata pelajaran');
+        await masterDataService.createMataPelajaran(data);
+        success('Mata pelajaran berhasil dibuat!');
+      }
 
       setIsModalOpen(false);
       setSelectedMapel(null);
+      
+      // Reset search dan filter
+      setSearchQuery('');
+      setFilterKategori('all');
+      setFilterJurusan('all');
+      
+      // Trigger refresh dengan increment counter
+      setRefreshTrigger(prev => prev + 1);
+      
     } catch (error) {
-      console.error('Form submit error:', error);
-      alert('Failed to save mata pelajaran');
+      console.error('❌ Form submit error:', error);
+      showError(error.response?.data?.message || 'Gagal menyimpan mata pelajaran');
     } finally {
       setLoading(false);
     }
@@ -120,24 +126,13 @@ const MataPelajaran = () => {
     try {
       setLoading(true);
       await masterDataService.deleteMataPelajaran(mapel.id);
-      alert('Mata pelajaran deleted successfully!');
+      success('Mata pelajaran berhasil dihapus!');
       
-      // Reload data
-      const mapelRes = await masterDataService.getAllMataPelajaran();
-      setMapelList((mapelRes.data || []).map(m => ({
-        id: m.id,
-        kode: m.kode,
-        nama: m.nama,
-        kategori: m.kategori || 'umum',
-        jurusan: m.jurusan?.kode || 'Semua',
-        jurusan_ids: m.jurusan_id ? [m.jurusan_id] : [],
-        sks: m.sks || 4,
-        tingkat: ['10', '11', '12'],
-        is_active: m.is_active !== false,
-      })));
+      // Trigger refresh dengan increment counter
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Failed to delete mata pelajaran');
+      showError(error.response?.data?.message || 'Gagal menghapus mata pelajaran');
     } finally {
       setLoading(false);
     }

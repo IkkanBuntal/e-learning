@@ -48,7 +48,10 @@ const JadwalForm = ({ mode = 'create', initialData = null, onSubmit, onCancel, l
         
         setMataPelajaranList(mataPelajaranRes.data || []);
         setGuruList(guruRes.data || []);
-        setKelasList(kelasRes.data || []);
+        
+        // Handle paginated kelas response
+        const kelasData = kelasRes.data?.data || kelasRes.data;
+        setKelasList(Array.isArray(kelasData) ? kelasData : []);
       } catch (error) {
         console.error('Error loading form data:', error);
       } finally {

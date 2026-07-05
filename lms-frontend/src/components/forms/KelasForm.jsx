@@ -22,7 +22,6 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, loading = false }) => {
     tingkat: '10',
     wali_kelas_id: '',
     kapasitas: 32,
-    tahun_ajaran: '',
     is_active: true,
   });
 
@@ -42,7 +41,8 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, loading = false }) => {
         ]);
         
         setJurusanList(jurusanRes.data || []);
-        setGuruList(guruRes.data || []);
+        // Handle pagination response from backend
+        setGuruList(guruRes.data?.data || []);
       } catch (error) {
         console.error('Error loading form data:', error);
       } finally {
@@ -62,16 +62,8 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, loading = false }) => {
         tingkat: kelas.tingkat || '10',
         wali_kelas_id: kelas.wali_kelas_id || '',
         kapasitas: kelas.kapasitas || 32,
-        tahun_ajaran: kelas.tahun_ajaran || '',
         is_active: kelas.is_active !== undefined ? kelas.is_active : true,
       });
-    } else {
-      // Set default tahun ajaran for create mode
-      const currentYear = new Date().getFullYear();
-      setFormData((prev) => ({
-        ...prev,
-        tahun_ajaran: `${currentYear}/${currentYear + 1}`,
-      }));
     }
   }, [kelas]);
 
@@ -124,13 +116,6 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, loading = false }) => {
       newErrors.kapasitas = 'Kapasitas minimal 1';
     } else if (formData.kapasitas > 50) {
       newErrors.kapasitas = 'Kapasitas maksimal 50';
-    }
-
-    // Tahun Ajaran validation
-    if (!formData.tahun_ajaran.trim()) {
-      newErrors.tahun_ajaran = 'Tahun ajaran harus diisi';
-    } else if (!/^\d{4}\/\d{4}$/.test(formData.tahun_ajaran)) {
-      newErrors.tahun_ajaran = 'Format: 2024/2025';
     }
 
     setErrors(newErrors);
@@ -254,7 +239,7 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, loading = false }) => {
         )}
       </div>
 
-      {/* Kapasitas & Tahun Ajaran - 2 columns */}
+      {/* Kapasitas & Ruangan - 2 columns */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Kapasitas */}
         <div>
@@ -277,27 +262,6 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, loading = false }) => {
             <p className="mt-1 text-sm text-red-600">{errors.kapasitas}</p>
           )}
           <p className="mt-1 text-xs text-gray-500">Maksimal 50 siswa</p>
-        </div>
-
-        {/* Tahun Ajaran */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tahun Ajaran <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            name="tahun_ajaran"
-            value={formData.tahun_ajaran}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-              errors.tahun_ajaran ? 'border-red-500' : 'border-gray-300'
-            }`}
-            placeholder="2024/2025"
-            disabled={loading}
-          />
-          {errors.tahun_ajaran && (
-            <p className="mt-1 text-sm text-red-600">{errors.tahun_ajaran}</p>
-          )}
         </div>
       </div>
 

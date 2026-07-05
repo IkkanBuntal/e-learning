@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Users, BookOpen } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
@@ -10,6 +10,7 @@ import SearchFilterBar from '../../components/common/SearchFilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import masterDataService from '../../services/masterDataService';
 import { userService } from '../../services/userService';
+import { useToast } from '../../context/ToastContext';
 
 const Kelas = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,83 +22,141 @@ const Kelas = () => {
   const [loadingData, setLoadingData] = useState(true);
   const [kelasList, setKelasList] = useState([]);
   const [jurusanList, setJurusanList] = useState([]);
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+    from: 0,
+    to: 0
+  });
+
+  const { success, error: showError } = useToast();
 
   // Fetch data
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoadingData(true);
-        const [kelasRes, jurusanRes, siswaRes] = await Promise.all([
-          masterDataService.getAllKelas(),
-          masterDataService.getAllJurusan(),
-          userService.getAll({ role: 'siswa' }),
-        ]);
-
-        const allSiswa = Array.isArray(siswaRes.data) ? siswaRes.data : (siswaRes.data?.data || []);
-        
-        setKelasList((kelasRes.data || []).map(k => ({
-          id: k.id,
-          nama: k.nama,
-          jurusan: k.jurusan || { id: 0, kode: '-' },
-          tingkat: k.tingkat ? k.tingkat.toString() : '10',
-          wali_kelas: k.wali_kelas || null,
-          jumlah_siswa: allSiswa.filter(s => s.kelas_id === k.id).length,
-          kapasitas: k.kapasitas || 32,
-          tahun_ajaran: k.tahun_ajaran || '2025/2026',
-          is_active: k.is_active !== false,
-        })));
-        
-        setJurusanList((jurusanRes.data || []).map(j => ({ id: j.id, kode: j.kode })));
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoadingData(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  /**
-   * Handle form submit
-   */
-  const handleFormSubmit = async (data) => {
+  const fetchData = useCallback(async (page = 1) => {
     try {
-      setLoading(true);
-
-      if (selectedKelas) {
-        await masterDataService.updateKelas(selectedKelas.id, data);
-        alert('Kelas updated successfully!');
-      } else {
-        await masterDataService.createKelas(data);
-        alert('Kelas created successfully!');
+      setLoadingData(true);
+      
+      // Prepare params for API call
+      const params = {
+        page: page,
+        _t: Date.now() // Cache buster
+      };
+      
+      // Only add filters if not 'all'
+      if (filterJurusan && filterJurusan !== 'all') {
+        params.jurusan_id = filterJurusan;
       }
-
-      // Reload data
-      const [kelasRes, siswaRes] = await Promise.all([
-        masterDataService.getAllKelas(),
+      
+      if (filterTingkat && filterTingkat !== 'all') {
+        params.tingkat = filterTingkat;
+      }
+      
+      // Only add search if not empty
+      if (searchQuery && searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+      
+      const [kelasRes, jurusanRes, siswaRes] = await Promise.all([
+        masterDataService.getAllKelas(params),
+        masterDataService.getAllJurusan(),
         userService.getAll({ role: 'siswa' }),
       ]);
 
-      const allSiswa = siswaRes.data || [];
+      // Handle pagination response from Laravel
+      const isLaravelPaginated = kelasRes.data.data && kelasRes.data.current_page;
+      const kelasData = isLaravelPaginated ? kelasRes.data.data : (Array.isArray(kelasRes.data) ? kelasRes.data : []);
+      const allSiswa = Array.isArray(siswaRes.data) ? siswaRes.data : (siswaRes.data?.data || []);
       
-      setKelasList((kelasRes.data || []).map(k => ({
+      console.log('📊 Raw kelas data from API:', kelasData);
+      
+      const updatedKelasList = kelasData.map(k => ({
         id: k.id,
         nama: k.nama,
         jurusan: k.jurusan || { id: 0, kode: '-' },
         tingkat: k.tingkat ? k.tingkat.toString() : '10',
         wali_kelas: k.wali_kelas || null,
+        wali_kelas_id: k.wali_kelas_id || null,
         jumlah_siswa: allSiswa.filter(s => s.kelas_id === k.id).length,
         kapasitas: k.kapasitas || 32,
         tahun_ajaran: k.tahun_ajaran || '2025/2026',
         is_active: k.is_active !== false,
-      })));
+      }));
+      
+      console.log('📊 Mapped kelas list:', updatedKelasList);
+      
+      setKelasList(updatedKelasList);
+      setJurusanList((jurusanRes.data || []).map(j => ({ id: j.id, kode: j.kode })));
+      
+      // Update pagination state
+      if (isLaravelPaginated) {
+        setPagination({
+          current_page: kelasRes.data.current_page,
+          last_page: kelasRes.data.last_page,
+          per_page: kelasRes.data.per_page,
+          total: kelasRes.data.total,
+          from: kelasRes.data.from,
+          to: kelasRes.data.to
+        });
+      } else {
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          per_page: updatedKelasList.length,
+          total: updatedKelasList.length,
+          from: 1,
+          to: updatedKelasList.length
+        });
+      }
+      
+      console.log('✅ Kelas data updated, total:', updatedKelasList.length);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      showError('Gagal memuat data kelas');
+    } finally {
+      setLoadingData(false);
+    }
+  }, [filterJurusan, filterTingkat, searchQuery, showError]);
+
+  useEffect(() => {
+    fetchData(1); // Always reset to page 1 when filters change
+  }, [filterJurusan, filterTingkat, searchQuery]);
+
+  /**
+   * Handle form submit
+   */
+  const handleFormSubmit = async (data) => {
+    console.log('📝 Form submitted with data:', data);
+    
+    const currentPage = pagination.current_page; // Simpan halaman saat ini
+    
+    try {
+      setLoading(true);
+
+      if (selectedKelas) {
+        console.log('🔄 Updating kelas ID:', selectedKelas.id);
+        await masterDataService.updateKelas(selectedKelas.id, data);
+        success('Kelas berhasil diupdate!');
+      } else {
+        console.log('➕ Creating new kelas');
+        await masterDataService.createKelas(data);
+        success('Kelas berhasil dibuat!');
+      }
 
       setIsModalOpen(false);
       setSelectedKelas(null);
+      
+      // Fetch data baru - tetap di halaman saat ini
+      console.log('🔄 Refreshing data after update...');
+      await fetchData(currentPage);
+      console.log('✅ Data refreshed');
+      
     } catch (error) {
-      console.error('Form submit error:', error);
-      alert('Failed to save kelas');
+      console.error('❌ Form submit error:', error);
+      showError(error.response?.data?.message || 'Gagal menyimpan kelas');
     } finally {
       setLoading(false);
     }
@@ -118,7 +177,7 @@ const Kelas = () => {
     setSelectedKelas({
       ...kelas,
       jurusan_id: kelas.jurusan.id,
-      wali_kelas_id: kelas.wali_kelas ? kelas.wali_kelas.id : null,
+      wali_kelas_id: kelas.wali_kelas_id || null,
     });
     setIsModalOpen(true);
   };
@@ -127,37 +186,38 @@ const Kelas = () => {
    * Handle delete kelas
    */
   const handleDelete = async (kelas) => {
-    if (!confirm(`Yakin ingin menghapus kelas "${kelas.nama}"?`)) {
+    console.log('🗑️ Delete clicked for kelas:', kelas);
+    console.log('🆔 Kelas ID:', kelas.id);
+    console.log('🆔 ID type:', typeof kelas.id);
+    
+    if (!kelas.id) {
+      console.error('❌ ERROR: Kelas ID is missing or undefined!');
+      showError('ID kelas tidak valid');
       return;
     }
+    
+    if (!window.confirm(`Yakin ingin menghapus kelas "${kelas.nama}"?`)) {
+      console.log('❌ Delete cancelled by user');
+      return;
+    }
+
+    console.log('✅ Delete confirmed, deleting ID:', kelas.id);
 
     try {
       setLoading(true);
       await masterDataService.deleteKelas(kelas.id);
-      alert('Kelas deleted successfully!');
+      console.log('✅ Delete successful from API');
       
-      // Reload data
-      const [kelasRes, siswaRes] = await Promise.all([
-        masterDataService.getAllKelas(),
-        userService.getAll({ role: 'siswa' }),
-      ]);
-
-      const allSiswa = siswaRes.data || [];
+      success('Kelas berhasil dihapus!');
       
-      setKelasList((kelasRes.data || []).map(k => ({
-        id: k.id,
-        nama: k.nama,
-        jurusan: k.jurusan || { id: 0, kode: '-' },
-        tingkat: k.tingkat ? k.tingkat.toString() : '10',
-        wali_kelas: k.wali_kelas || null,
-        jumlah_siswa: allSiswa.filter(s => s.kelas_id === k.id).length,
-        kapasitas: k.kapasitas || 32,
-        tahun_ajaran: k.tahun_ajaran || '2025/2026',
-        is_active: k.is_active !== false,
-      })));
+      // Fetch data baru setelah delete - tetap di halaman saat ini
+      console.log('🔄 Refreshing data after delete...');
+      await fetchData(pagination.current_page);
+      
     } catch (error) {
-      console.error('Delete error:', error);
-      alert('Failed to delete kelas');
+      console.error('❌ Delete error:', error);
+      console.error('Error response:', error.response);
+      showError(error.response?.data?.message || 'Gagal menghapus kelas');
     } finally {
       setLoading(false);
     }
@@ -172,18 +232,11 @@ const Kelas = () => {
   };
 
   /**
-   * Filter kelas
+   * Filter kelas - NO CLIENT-SIDE FILTERING
+   * Karena data sudah di-paginate di backend, 
+   * filter harus dilakukan di backend via fetchData()
    */
-  const filteredKelas = kelasList.filter((kelas) => {
-    const matchesSearch = kelas.nama
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesJurusan =
-      filterJurusan === 'all' || kelas.jurusan.id === parseInt(filterJurusan);
-    const matchesTingkat =
-      filterTingkat === 'all' || kelas.tingkat === filterTingkat;
-    return matchesSearch && matchesJurusan && matchesTingkat;
-  });
+  const filteredKelas = kelasList; // No client-side filtering
 
   return (
     <div>
@@ -214,9 +267,9 @@ const Kelas = () => {
             onChange: (e) => setFilterTingkat(e.target.value),
             placeholder: 'Semua Tingkat',
             options: [
-              { value: '10', label: 'Kelas X' },
-              { value: '11', label: 'Kelas XI' },
-              { value: '12', label: 'Kelas XII' },
+              { value: 'X', label: 'Kelas X' },
+              { value: 'XI', label: 'Kelas XI' },
+              { value: 'XII', label: 'Kelas XII' },
             ],
           },
         ]}
@@ -275,7 +328,7 @@ const Kelas = () => {
                 filteredKelas.map((kelas, index) => (
                   <tr key={kelas.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {index + 1}
+                      {(pagination.current_page - 1) * pagination.per_page + index + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <p className="text-sm font-semibold text-gray-900">
@@ -291,12 +344,15 @@ const Kelas = () => {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {kelas.tingkat === 'X' && 'X'}
+                      {kelas.tingkat === 'XI' && 'XI'}
+                      {kelas.tingkat === 'XII' && 'XII'}
                       {kelas.tingkat === '10' && 'X'}
                       {kelas.tingkat === '11' && 'XI'}
                       {kelas.tingkat === '12' && 'XII'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {kelas.wali_kelas ? kelas.wali_kelas.name : '-'}
+                      {kelas.wali_kelas || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
@@ -324,16 +380,42 @@ const Kelas = () => {
         )}
 
         {/* Pagination */}
-        {filteredKelas.length > 0 && (
+        {pagination.total > 0 && (
           <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              Menampilkan {filteredKelas.length} dari {kelasList.length} kelas
+              Menampilkan {pagination.from || 0} - {pagination.to || 0} dari {pagination.total} kelas
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={pagination.current_page === 1}
+                onClick={() => fetchData(pagination.current_page - 1)}
+              >
                 Previous
               </Button>
-              <Button variant="outline" size="sm" disabled>
+              
+              {/* Page numbers */}
+              <div className="flex gap-1">
+                {Array.from({ length: pagination.last_page }, (_, i) => i + 1).map(page => (
+                  <Button
+                    key={page}
+                    variant={page === pagination.current_page ? "primary" : "outline"}
+                    size="sm"
+                    onClick={() => fetchData(page)}
+                    className="min-w-[40px]"
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={pagination.current_page === pagination.last_page}
+                onClick={() => fetchData(pagination.current_page + 1)}
+              >
                 Next
               </Button>
             </div>

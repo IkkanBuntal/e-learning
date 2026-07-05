@@ -19,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Fix route model binding untuk Kelas
+        // Laravel singular-kan route param menjadi 'kela', tapi model adalah 'Kelas'
+        \Illuminate\Support\Facades\Route::model('kela', \App\Models\Kelas::class);
     }
 }

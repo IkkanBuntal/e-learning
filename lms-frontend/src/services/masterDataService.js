@@ -34,8 +34,8 @@ export const deleteJurusan = async (id) => {
 /**
  * Kelas CRUD
  */
-export const getAllKelas = async (mataPelajaranId = null) => {
-  const response = await api.get('/kelas');
+export const getAllKelas = async (params = {}) => {
+  const response = await api.get('/kelas', { params });
   return response.data;
 };
 

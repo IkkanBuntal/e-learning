@@ -62,7 +62,10 @@ const Jadwal = () => {
         }));
 
         setJadwalList(jadwalData);
-        setKelasList((kelasRes.data || []).map(k => ({ id: k.id, nama: k.nama })));
+        
+        // Handle paginated kelas response
+        const kelasData = kelasRes.data?.data || kelasRes.data || [];
+        setKelasList(Array.isArray(kelasData) ? kelasData.map(k => ({ id: k.id, nama: k.nama })) : []);
       } catch (error) {
         console.error('Error fetching jadwal data:', error);
       } finally {

@@ -36,6 +36,13 @@
   --color-secondary-900: #001220;
   --color-secondary: #0056A3;
   
+  /* Improved contrast grays (WCAG AA compliant) */
+  --color-gray-400: #6B7280; /* Darkened from #9CA3AF for better placeholder contrast */
+  --color-gray-500: #4B5563; /* Darkened for better icon contrast */
+  --color-gray-600: #374151; /* Darkened from #4B5563 for body text 4.7:1 ratio */
+  --color-gray-700: #1F2937;
+  --color-gray-800: #111827;
+  
   --animate-blob: blob 7s infinite;
   
   @keyframes blob {
@@ -95,4 +102,23 @@ body {
 
 .animate-slideUp {
   animation: slideUp 0.3s ease-out;
+}
+
+/* Reduced motion support - CRITICAL for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-fadeIn,
+  .animate-slideUp,
+  .animate-blob,
+  .animate-spin {
+    animation: none !important;
+  }
 }

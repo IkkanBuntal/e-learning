@@ -21,6 +21,7 @@ class Kelas extends Model
         'wali_kelas',
         'ruangan',
         'aktif',
+        'deskripsi',
     ];
 
     protected $casts = [

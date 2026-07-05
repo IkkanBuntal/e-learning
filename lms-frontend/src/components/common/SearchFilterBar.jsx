@@ -41,7 +41,7 @@ const SearchFilterBar = ({
             className="px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
           >
             {filter.placeholder && (
-              <option value="">{filter.placeholder}</option>
+              <option value="all">{filter.placeholder}</option>
             )}
             {filter.options.map((opt) => (
               <option key={opt.value} value={opt.value}>

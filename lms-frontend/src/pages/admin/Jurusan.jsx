@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, GraduationCap } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
@@ -9,6 +9,7 @@ import PageHeader from '../../components/common/PageHeader';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import EmptyState from '../../components/common/EmptyState';
 import { getAllJurusan, createJurusan, updateJurusan, deleteJurusan } from '../../services/masterDataService';
+import { useToast } from '../../context/ToastContext';
 
 const Jurusan = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,39 +18,66 @@ const Jurusan = () => {
   const [loading, setLoading] = useState(false);
   const [jurusanList, setJurusanList] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Force refresh trigger
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  const fetchJurusan = async () => {
+  const { success, error: showError } = useToast();
+
+  const fetchJurusan = useCallback(async () => {
     try {
       setLoadingData(true);
       const result = await getAllJurusan();
+      
+      console.log('🔄 Fetched jurusan:', result);
+      
       if (result.data) {
         setJurusanList(result.data);
+        console.log('✅ Jurusan state updated');
       }
     } catch (error) {
       console.error('Error fetching jurusan:', error);
+      showError('Gagal memuat data jurusan');
     } finally {
       setLoadingData(false);
     }
-  };
+  }, [refreshTrigger, showError]);
 
   const handleFormSubmit = async (data) => {
+    console.log('📝 Form submitted with data:', data);
+    console.log('📝 Selected jurusan:', selectedJurusan);
+    
     try {
       setLoading(true);
 
       if (selectedJurusan) {
-        await updateJurusan(selectedJurusan.id, data);
-        alert('Jurusan updated successfully!');
+        // Update jurusan
+        console.log('🔄 Updating jurusan ID:', selectedJurusan.id);
+        const result = await updateJurusan(selectedJurusan.id, data);
+        console.log('✅ Update result:', result);
+        success('Jurusan berhasil diupdate!');
       } else {
-        await createJurusan(data);
-        alert('Jurusan created successfully!');
+        // Create jurusan
+        console.log('➕ Creating new jurusan');
+        const result = await createJurusan(data);
+        console.log('✅ Create result:', result);
+        success('Jurusan berhasil dibuat!');
       }
 
       setIsModalOpen(false);
       setSelectedJurusan(null);
-      fetchJurusan();
+      
+      // Reset search untuk memastikan jurusan baru terlihat
+      setSearchQuery('');
+      
+      // Trigger refresh dengan increment counter
+      setRefreshTrigger(prev => prev + 1);
+      
     } catch (error) {
-      console.error('Form submit error:', error);
-      alert('Failed to save jurusan');
+      console.error('❌ Form submit error:', error);
+      showError(error.response?.data?.message || 'Gagal menyimpan jurusan');
     } finally {
       setLoading(false);
     }
@@ -73,11 +101,13 @@ const Jurusan = () => {
     try {
       setLoading(true);
       await deleteJurusan(jurusan.id);
-      alert('Jurusan deleted successfully!');
-      fetchJurusan();
+      success('Jurusan berhasil dihapus!');
+      
+      // Trigger refresh dengan increment counter
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Failed to delete jurusan');
+      showError(error.response?.data?.message || 'Gagal menghapus jurusan');
     } finally {
       setLoading(false);
     }
@@ -90,9 +120,20 @@ const Jurusan = () => {
     return matchesSearch;
   });
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredJurusan.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentJurusan = filteredJurusan.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   useEffect(() => {
     fetchJurusan();
-  }, []);
+  }, [fetchJurusan]);
 
   return (
     <div>
@@ -142,7 +183,7 @@ const Jurusan = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredJurusan.length === 0 ? (
+                {currentJurusan.length === 0 ? (
                   <tr>
                     <td colSpan="5">
                       <EmptyState
@@ -153,10 +194,10 @@ const Jurusan = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredJurusan.map((jurusan, index) => (
+                  currentJurusan.map((jurusan, index) => (
                     <tr key={jurusan.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {index + 1}
+                        {startIndex + index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex px-3 py-1 text-sm font-semibold bg-primary-100 text-primary-700 rounded-lg">
@@ -184,6 +225,49 @@ const Jurusan = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {filteredJurusan.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              Menampilkan {startIndex + 1} - {Math.min(endIndex, filteredJurusan.length)} dari {filteredJurusan.length} jurusan
+            </p>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+              >
+                Previous
+              </Button>
+              
+              {/* Page numbers */}
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <Button
+                    key={page}
+                    variant={page === currentPage ? "primary" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className="min-w-[40px]"
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>
