@@ -42,14 +42,17 @@ const JadwalForm = ({ mode = 'create', initialData = null, onSubmit, onCancel, l
         setIsLoadingData(true);
         const [mataPelajaranRes, guruRes, kelasRes] = await Promise.all([
           getAllMataPelajaran(),
-          getAllUsers({ role: 'guru' }),
-          getAllKelas(),
+          getAllUsers({ role: 'guru', all: 'true' }),
+          getAllKelas({ all: 'true' }),
         ]);
         
-        setMataPelajaranList(mataPelajaranRes.data || []);
-        setGuruList(guruRes.data || []);
+        // Handle potential paginated responses
+        const mapelData = mataPelajaranRes.data?.data || mataPelajaranRes.data;
+        setMataPelajaranList(Array.isArray(mapelData) ? mapelData : []);
         
-        // Handle paginated kelas response
+        const guruData = guruRes.data?.data || guruRes.data;
+        setGuruList(Array.isArray(guruData) ? guruData : []);
+        
         const kelasData = kelasRes.data?.data || kelasRes.data;
         setKelasList(Array.isArray(kelasData) ? kelasData : []);
       } catch (error) {

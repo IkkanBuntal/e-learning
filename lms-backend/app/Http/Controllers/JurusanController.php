@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\ActivityLog;
 use App\Models\Jurusan;
 
 class JurusanController extends Controller
@@ -31,6 +32,7 @@ class JurusanController extends Controller
         ]);
 
         $jurusan = Jurusan::create($validated);
+        ActivityLog::log('create', 'Jurusan', $jurusan->nama, 'Menambahkan jurusan baru');
 
         return response()->json([
             'status' => 'success',
@@ -62,6 +64,7 @@ class JurusanController extends Controller
         ]);
 
         $jurusan->update($validated);
+        ActivityLog::log('update', 'Jurusan', $jurusan->nama, 'Mengubah data jurusan');
 
         return response()->json([
             'status' => 'success',
@@ -75,6 +78,7 @@ class JurusanController extends Controller
      */
     public function destroy(Jurusan $jurusan)
     {
+        ActivityLog::log('delete', 'Jurusan', $jurusan->nama, 'Menghapus jurusan');
         $jurusan->delete();
         return response()->json([
             'status' => 'success',

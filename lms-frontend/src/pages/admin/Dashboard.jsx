@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import StatCard from '../../components/common/StatCard';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
@@ -16,14 +16,75 @@ import {
   Download,
   BarChart3,
   PieChart,
-  Activity
+  Activity,
+  Plus,
+  Pencil,
+  Trash2,
+  Zap,
+  Server,
+  Database,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  MemoryStick,
+  CheckCircle2,
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
 import dashboardService from '../../services/dashboardService';
+import api from '../../services/api';
+
+// ─── Health check helper ──────────────────────────────────────────────────────
+const fetchHealth = async () => {
+  const start = performance.now();
+  try {
+    const res = await api.get('/health', { timeout: 8000 });
+    const latency = Math.round(performance.now() - start);
+    return { ...res.data, client_latency_ms: latency, online: true };
+  } catch {
+    return { online: false, status: 'error', client_latency_ms: null };
+  }
+};
+
+// ─── Latency badge helper ─────────────────────────────────────────────────────
+const latencyColor = (ms) => {
+  if (ms === null) return 'text-gray-400';
+  if (ms < 150)  return 'text-green-600';
+  if (ms < 400)  return 'text-yellow-600';
+  return 'text-red-600';
+};
+const latencyLabel = (ms) => {
+  if (ms === null) return '—';
+  return `${ms} ms`;
+};
 
 const AdminDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // --- Health state ---
+  const [health, setHealth] = useState(null);
+  const [healthLoading, setHealthLoading] = useState(true);
+  const [healthRefreshing, setHealthRefreshing] = useState(false);
+  const [lastChecked, setLastChecked] = useState(null);
+  const healthTimerRef = useRef(null);
+
+  const doHealthCheck = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setHealthRefreshing(true);
+    const data = await fetchHealth();
+    setHealth(data);
+    setLastChecked(new Date());
+    setHealthLoading(false);
+    if (showSpinner) setHealthRefreshing(false);
+  }, []);
+
+  useEffect(() => {
+    doHealthCheck();
+    healthTimerRef.current = setInterval(() => doHealthCheck(), 30_000);
+    return () => clearInterval(healthTimerRef.current);
+  }, [doHealthCheck]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     // Load data from API with AbortController
@@ -191,13 +252,9 @@ const AdminDashboard = () => {
 
   const jurusanDistribution = dashboardData.siswaPerJurusan || [];
   const recentActivities = dashboardData.recentActivities || [];
-
-  const systemHealth = {
-    server: 'Operational',
-    database: 'Operational',
-    storage: '65% Used',
-    lastBackup: '2 hours ago',
-  };
+  const totalJurusan = dashboardData.totalJurusan ?? 0;
+  const totalMapel = dashboardData.totalMapel ?? 0;
+  const totalJadwal = dashboardData.totalJadwal ?? 0;
 
   return (
     <div className="space-y-6">
@@ -313,39 +370,59 @@ const AdminDashboard = () => {
             </h3>
             <Badge variant="info" size="sm">Live</Badge>
           </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto">
+          <div className="space-y-2 max-h-80 overflow-y-auto">
             {recentActivities.length > 0 ? (
-              recentActivities.map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    activity.type === 'create' ? 'bg-green-100' :
-                    activity.type === 'update' ? 'bg-blue-100' :
-                    activity.type === 'upload' ? 'bg-purple-100' :
-                    'bg-red-100'
-                  }`}>
-                    {activity.type === 'create' && <Users className="w-4 h-4 text-green-600" />}
-                    {activity.type === 'update' && <Calendar className="w-4 h-4 text-blue-600" />}
-                    {activity.type === 'upload' && <BookOpen className="w-4 h-4 text-purple-600" />}
-                    {activity.type === 'delete' && <FileText className="w-4 h-4 text-red-600" />}
+              recentActivities.map((activity, index) => {
+                const isCreate = activity.type === 'create';
+                const isUpdate = activity.type === 'update';
+                const isDelete = activity.type === 'delete';
+                const moduleIcon = {
+                  'Jurusan':       <GraduationCap className="w-4 h-4" />,
+                  'Kelas':         <BookOpen className="w-4 h-4" />,
+                  'Mata Pelajaran':<FileText className="w-4 h-4" />,
+                  'Jadwal':        <Calendar className="w-4 h-4" />,
+                }[activity.module] || <Activity className="w-4 h-4" />;
+
+                const bgColor = isCreate ? 'bg-green-100 text-green-600'
+                              : isUpdate ? 'bg-blue-100 text-blue-600'
+                              : isDelete ? 'bg-red-100 text-red-600'
+                              : 'bg-gray-100 text-gray-600';
+
+                const actionBadge = isCreate ? { label: 'Tambah', cls: 'bg-green-100 text-green-700' }
+                                  : isUpdate ? { label: 'Edit',   cls: 'bg-blue-100 text-blue-700' }
+                                  : isDelete ? { label: 'Hapus',  cls: 'bg-red-100 text-red-700' }
+                                  : { label: activity.type, cls: 'bg-gray-100 text-gray-700' };
+
+                return (
+                  <div
+                    key={index}
+                    className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-100"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${bgColor}`}>
+                      {moduleIcon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${actionBadge.cls}`}>
+                          {actionBadge.label}
+                        </span>
+                        <span className="text-xs text-gray-500 font-medium">{activity.module}</span>
+                      </div>
+                      <p className="text-sm text-gray-900 mt-0.5">
+                        <span className="font-medium">{activity.user}</span>
+                        {' '}{activity.action}{' '}
+                        <span className="font-medium text-primary">{activity.target}</span>
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{activity.time}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">
-                      <span className="font-medium">{activity.user}</span>
-                      {' '}{activity.action}{' '}
-                      <span className="font-medium">{activity.target}</span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p className="text-sm">Belum ada aktivitas dalam periode ini</p>
-                <p className="text-xs mt-1">Aktivitas akan muncul saat ada kegiatan di sistem</p>
+                <p className="text-xs mt-1">Aktivitas akan muncul saat admin menambah/edit/hapus data akademik</p>
               </div>
             )}
           </div>
@@ -379,30 +456,149 @@ const AdminDashboard = () => {
           </div>
         </Card>
 
-        {/* System Health */}
+        {/* System Health — real-time */}
         <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-primary" />
-            Status Sistem
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-              <span className="text-sm font-medium text-gray-900">Server</span>
-              <Badge variant="success">{systemHealth.server}</Badge>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-              <span className="text-sm font-medium text-gray-900">Database</span>
-              <Badge variant="success">{systemHealth.database}</Badge>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-              <span className="text-sm font-medium text-gray-900">Storage</span>
-              <Badge variant="warning">{systemHealth.storage}</Badge>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-              <span className="text-sm font-medium text-gray-900">Last Backup</span>
-              <span className="text-sm text-gray-600">{systemHealth.lastBackup}</span>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary" />
+              Status Sistem
+            </h3>
+            <div className="flex items-center gap-2">
+              {lastChecked && (
+                <span className="text-xs text-gray-400">
+                  {lastChecked.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              )}
+              <button
+                onClick={() => doHealthCheck(true)}
+                disabled={healthRefreshing}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                title="Refresh status"
+              >
+                <RefreshCw className={`w-4 h-4 text-gray-500 ${healthRefreshing ? 'animate-spin' : ''}`} />
+              </button>
             </div>
           </div>
+
+          {healthLoading ? (
+            <div className="space-y-3">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+
+              {/* Overall / Online */}
+              <div className={`flex items-center justify-between p-3 rounded-lg ${
+                health?.online ? 'bg-green-50' : 'bg-red-50'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {health?.online
+                    ? <Wifi className="w-4 h-4 text-green-600" />
+                    : <WifiOff className="w-4 h-4 text-red-600" />}
+                  <span className="text-sm font-medium text-gray-900">Server</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    health?.online
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {health?.online ? 'Online' : 'Offline'}
+                  </span>
+                  {health?.uptime && (
+                    <span className="text-xs text-gray-500">up {health.uptime}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* API Latency */}
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-gray-900">API Latency</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className={`font-bold text-sm ${
+                    latencyColor(health?.client_latency_ms)
+                  }`}>
+                    {latencyLabel(health?.client_latency_ms)}
+                  </span>
+                  {health?.client_latency_ms !== null && health?.client_latency_ms !== undefined && (
+                    <span className="text-xs text-gray-400">
+                      {health.client_latency_ms < 150 ? '⚡ Cepat' : health.client_latency_ms < 400 ? '⚠ Normal' : '🐢 Lambat'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Database */}
+              <div className={`flex items-center justify-between p-3 rounded-lg ${
+                health?.services?.database?.status === 'ok' ? 'bg-purple-50' : 'bg-red-50'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-purple-600" />
+                  <span className="text-sm font-medium text-gray-900">Database</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {health?.services?.database?.status === 'ok'
+                    ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    : <XCircle className="w-4 h-4 text-red-500" />}
+                  {health?.services?.database?.latency_ms && (
+                    <span className="text-xs text-gray-500">
+                      {health.services.database.latency_ms} ms
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Memory */}
+              {health?.memory && (
+                <div className="p-3 bg-yellow-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Server className="w-4 h-4 text-yellow-600" />
+                      <span className="text-sm font-medium text-gray-900">Memory PHP</span>
+                    </div>
+                    <span className="text-xs font-semibold text-yellow-700">
+                      {health.memory.used_mb} MB / {health.memory.limit_mb} MB
+                    </span>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="w-full bg-yellow-200 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${
+                        health.memory.percent < 60
+                          ? 'bg-green-500'
+                          : health.memory.percent < 85
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.min(health.memory.percent, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1 text-right">{health.memory.percent}% digunakan</p>
+                </div>
+              )}
+
+              {/* Response time server-side */}
+              {health?.response_time_ms !== undefined && (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-900">Server Response</span>
+                  </div>
+                  <span className="text-sm font-bold text-gray-700">
+                    {health.response_time_ms} ms
+                  </span>
+                </div>
+              )}
+
+            </div>
+          )}
+
           <div className="mt-4">
             <Button variant="secondary" size="sm" className="w-full" icon={FileText}>
               Lihat Log Sistem

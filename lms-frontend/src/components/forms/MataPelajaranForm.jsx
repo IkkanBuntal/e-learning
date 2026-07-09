@@ -98,21 +98,7 @@ const MataPelajaranForm = ({ mataPelajaran = null, onSubmit, onCancel, loading =
     }
   };
 
-  /**
-   * Handle jurusan checkbox change
-   */
-  const handleJurusanChange = (jurusanId) => {
-    setFormData((prev) => {
-      const jurusanIds = prev.jurusan_ids.includes(jurusanId)
-        ? prev.jurusan_ids.filter((id) => id !== jurusanId)
-        : [...prev.jurusan_ids, jurusanId];
-      return { ...prev, jurusan_ids: jurusanIds };
-    });
 
-    if (errors.jurusan_ids) {
-      setErrors((prev) => ({ ...prev, jurusan_ids: '' }));
-    }
-  };
 
   /**
    * Handle tingkat checkbox change
@@ -157,7 +143,7 @@ const MataPelajaranForm = ({ mataPelajaran = null, onSubmit, onCancel, loading =
 
     // Jurusan validation (only for produktif)
     if (formData.kategori === 'produktif' && formData.jurusan_ids.length === 0) {
-      newErrors.jurusan_ids = 'Pilih minimal 1 jurusan untuk mata pelajaran produktif';
+      newErrors.jurusan_ids = 'Pilih jurusan untuk mata pelajaran produktif';
     }
 
     // SKS validation
@@ -293,25 +279,31 @@ const MataPelajaranForm = ({ mataPelajaran = null, onSubmit, onCancel, loading =
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Jurusan <span className="text-red-500">*</span>
           </label>
-          <div className="space-y-2">
+          <select
+            name="jurusan_ids"
+            value={formData.jurusan_ids.length > 0 ? formData.jurusan_ids[0] : ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormData(prev => ({
+                ...prev,
+                jurusan_ids: val ? [parseInt(val)] : []
+              }));
+              if (errors.jurusan_ids) {
+                setErrors(prev => ({ ...prev, jurusan_ids: '' }));
+              }
+            }}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+              errors.jurusan_ids ? 'border-red-500' : 'border-gray-300'
+            }`}
+            disabled={loading}
+          >
+            <option value="">-- Pilih Jurusan --</option>
             {jurusanList.map((jurusan) => (
-              <label
-                key={jurusan.id}
-                className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={formData.jurusan_ids.includes(jurusan.id)}
-                  onChange={() => handleJurusanChange(jurusan.id)}
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                  disabled={loading}
-                />
-                <span className="text-sm text-gray-700">
-                  {jurusan.kode} - {jurusan.nama}
-                </span>
-              </label>
+              <option key={jurusan.id} value={jurusan.id}>
+                {jurusan.kode} - {jurusan.nama}
+              </option>
             ))}
-          </div>
+          </select>
           {errors.jurusan_ids && (
             <p className="mt-1 text-sm text-red-600">{errors.jurusan_ids}</p>
           )}

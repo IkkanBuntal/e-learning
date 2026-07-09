@@ -33,7 +33,11 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->paginate(10);
+        if ($request->has('all') && $request->all == 'true') {
+            $users = $query->get();
+        } else {
+            $users = $query->paginate($request->get('per_page', 10));
+        }
 
         return response()->json([
             'status' => 'success',

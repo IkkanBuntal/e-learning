@@ -163,7 +163,7 @@ const Sidebar = ({ isOpen = true, onClose }) => {
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-white/10">
+          <div className="flex items-center justify-between h-[73px] px-6 border-b border-white/10 flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/20">
                 <GraduationCap className="w-6 h-6 text-white" />

@@ -23,6 +23,7 @@ const LaporanGuru = lazy(() => import('../pages/admin/LaporanGuru'));
 const Statistik = lazy(() => import('../pages/admin/Statistik'));
 const Settings = lazy(() => import('../pages/admin/Settings'));
 const Roles = lazy(() => import('../pages/admin/Roles'));
+const Profile = lazy(() => import('../pages/Profile'));
 
 // Guru pages
 const GuruMateri = lazy(() => import('../pages/guru/Materi'));
@@ -127,6 +128,10 @@ const router = createBrowserRouter([
             path: 'settings',
             element: <LazyComponent><Settings /></LazyComponent>,
           },
+          {
+            path: 'profile',
+            element: <LazyComponent><Profile /></LazyComponent>,
+          },
         ],
       },
     ],
@@ -164,7 +169,10 @@ const router = createBrowserRouter([
             path: 'absensi',
             element: <LazyComponent><GuruAbsensi /></LazyComponent>,
           },
-          // More guru routes can be added later
+          {
+            path: 'profile',
+            element: <LazyComponent><Profile /></LazyComponent>,
+          },
         ],
       },
     ],
@@ -198,7 +206,10 @@ const router = createBrowserRouter([
             path: 'absensi',
             element: <LazyComponent><SiswaAbsensi /></LazyComponent>,
           },
-          // More siswa routes can be added later
+          {
+            path: 'profile',
+            element: <LazyComponent><Profile /></LazyComponent>,
+          },
         ],
       },
     ],

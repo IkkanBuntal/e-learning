@@ -14,6 +14,10 @@ export const authService = {
         role: data.user.role.nama,
         kelas_id: data.user.kelas_id,
         nis: data.user.nis,
+        nip: data.user.nip,
+        foto: data.user.foto,
+        no_telp: data.user.no_telp,
+        alamat: data.user.alamat,
       },
     };
   },
@@ -39,6 +43,10 @@ export const authService = {
       role: data.role.nama,
       kelas_id: data.kelas_id,
       nis: data.nis,
+      nip: data.nip,
+      foto: data.foto,
+      no_telp: data.no_telp,
+      alamat: data.alamat,
     };
   },
 };

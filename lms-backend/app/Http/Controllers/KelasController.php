@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\ActivityLog;
 use App\Models\Kelas;
 
 class KelasController extends Controller
@@ -34,10 +35,16 @@ class KelasController extends Controller
             });
         }
 
-        $kelas = $query->paginate(10);
+        if ($request->has('all') && $request->all == 'true') {
+            $kelas = $query->get();
+            $kelasToTransform = $kelas;
+        } else {
+            $kelas = $query->paginate($request->get('per_page', 10));
+            $kelasToTransform = $kelas->getCollection();
+        }
         
         // Add wali_kelas_id untuk setiap kelas
-        $kelas->getCollection()->transform(function ($item) {
+        $kelasToTransform->transform(function ($item) {
             if ($item->wali_kelas) {
                 // Trim whitespace dan cari guru
                 $namaWaliKelas = trim($item->wali_kelas);
@@ -100,6 +107,7 @@ class KelasController extends Controller
 
         $kelas = Kelas::create($validated);
         $kelas->load('jurusan');
+        ActivityLog::log('create', 'Kelas', $kelas->nama, 'Menambahkan kelas baru');
 
         return response()->json([
             'status' => 'success',
@@ -180,6 +188,7 @@ class KelasController extends Controller
         } else {
             $kelas->wali_kelas_id = null;
         }
+        ActivityLog::log('update', 'Kelas', $kelas->nama, 'Mengubah data kelas');
         
         \Illuminate\Support\Facades\Log::info('Updated kelas: ' . json_encode($kelas));
 
@@ -205,6 +214,7 @@ class KelasController extends Controller
             \Illuminate\Support\Facades\Log::info('Updated ' . $updated . ' students');
             
             // Delete the kelas - related records will cascade automatically
+            ActivityLog::log('delete', 'Kelas', $kelas->nama, 'Menghapus kelas');
             $deleted = $kelas->delete();
             \Illuminate\Support\Facades\Log::info('Delete result: ' . ($deleted ? 'success' : 'failed'));
             

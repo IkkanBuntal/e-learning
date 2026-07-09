@@ -82,6 +82,7 @@ const Users = () => {
             kelas: u.kelas?.nama || null,
             kelas_id: u.kelas_id || null,
             status: u.aktif ? 'active' : 'inactive',
+            foto: u.foto || null,
           })));
           
           // Update pagination state
@@ -109,6 +110,7 @@ const Users = () => {
             kelas: u.kelas?.nama || null,
             kelas_id: u.kelas_id || null,
             status: u.aktif ? 'active' : 'inactive',
+            foto: u.foto || null,
           })));
           
           // No pagination
@@ -319,11 +321,19 @@ const Users = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-primary-600">
-                              {user.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
+                          {user.foto ? (
+                            <img
+                              src={`/storage/${user.foto}`}
+                              alt={user.name}
+                              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-semibold text-primary-600">
+                                {user.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
                           <div className="ml-3">
                             <p className="text-sm font-medium text-gray-900">
                               {user.name}

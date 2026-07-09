@@ -6,12 +6,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Kelas;
+use App\Models\Jurusan;
+use App\Models\MataPelajaran;
 use App\Models\Materi;
 use App\Models\Tugas;
 use App\Models\Nilai;
 use App\Models\Absensi;
 use App\Models\PengumpulanTugas;
 use App\Models\JadwalMengajar;
+use App\Models\ActivityLog;
 use App\Services\CacheService;
 
 class DashboardController extends Controller
@@ -97,6 +100,9 @@ class DashboardController extends Controller
                     'avgNilai' => round($avgNilai, 1),
                     'avgKehadiran' => round($avgKehadiran, 1),
                     'totalSubmissions' => $totalSubmissions,
+                    'totalJurusan' => Jurusan::count(),
+                    'totalMapel' => MataPelajaran::count(),
+                    'totalJadwal' => JadwalMengajar::where('aktif', true)->count(),
                     'siswaPerJurusan' => $siswaPerJurusan->values()->toArray(), // Force to array
                     'recentActivities' => $this->getRecentActivities($dateRange)
                 ]
@@ -494,114 +500,40 @@ class DashboardController extends Controller
     }
     
     /**
-     * Get recent activities for dashboard
+     * Get recent activities from activity_logs table
      */
     private function getRecentActivities($dateRange)
     {
-        $activities = [];
-        
-        // Recent users (last 10)
-        $recentUsers = User::whereBetween('created_at', $dateRange)
-            ->with('role')
+        $logs = ActivityLog::with('user')
+            ->whereBetween('created_at', $dateRange)
             ->orderBy('created_at', 'desc')
-            ->limit(5)
+            ->limit(20)
             ->get();
-        
-        foreach ($recentUsers as $user) {
-            $activities[] = [
-                'type' => 'create',
-                'user' => 'Admin',
-                'action' => 'menambahkan',
-                'target' => ($user->role ? $user->role->nama : 'user') . ' ' . $user->nama,
-                'time' => $this->timeAgo($user->created_at),
-                'timestamp' => $user->created_at->timestamp
+
+        // If no logs in date range, show latest 10 regardless of period
+        if ($logs->isEmpty()) {
+            $logs = ActivityLog::with('user')
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+        }
+
+        $actionMap = [
+            'create' => 'menambahkan',
+            'update' => 'mengubah',
+            'delete' => 'menghapus',
+        ];
+
+        return $logs->map(function($log) use ($actionMap) {
+            return [
+                'type'   => $log->action,
+                'user'   => $log->user_name ?? 'Admin',
+                'action' => ($actionMap[$log->action] ?? $log->action) . ' ' . $log->module,
+                'target' => $log->target_name ?? '',
+                'time'   => $this->timeAgo($log->created_at),
+                'module' => $log->module,
             ];
-        }
-        
-        // Recent materi (last 10)
-        $recentMateri = Materi::whereBetween('created_at', $dateRange)
-            ->with(['guru', 'mataPelajaran'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
-        
-        foreach ($recentMateri as $materi) {
-            $activities[] = [
-                'type' => 'upload',
-                'user' => $materi->guru ? $materi->guru->nama : 'Guru',
-                'action' => 'mengupload materi',
-                'target' => $materi->mataPelajaran ? $materi->mataPelajaran->nama : $materi->judul,
-                'time' => $this->timeAgo($materi->created_at),
-                'timestamp' => $materi->created_at->timestamp
-            ];
-        }
-        
-        // Recent tugas (last 10)
-        $recentTugas = Tugas::whereBetween('created_at', $dateRange)
-            ->with(['guru', 'mataPelajaran'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
-        
-        foreach ($recentTugas as $tugas) {
-            $activities[] = [
-                'type' => 'create',
-                'user' => $tugas->guru ? $tugas->guru->nama : 'Guru',
-                'action' => 'membuat tugas',
-                'target' => $tugas->judul,
-                'time' => $this->timeAgo($tugas->created_at),
-                'timestamp' => $tugas->created_at->timestamp
-            ];
-        }
-        
-        // Recent submissions (last 10)
-        $recentSubmissions = PengumpulanTugas::whereBetween('created_at', $dateRange)
-            ->with(['siswa', 'tugas'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
-        
-        foreach ($recentSubmissions as $submission) {
-            $activities[] = [
-                'type' => 'upload',
-                'user' => $submission->siswa ? $submission->siswa->nama : 'Siswa',
-                'action' => 'mengumpulkan tugas',
-                'target' => $submission->tugas ? $submission->tugas->judul : 'tugas',
-                'time' => $this->timeAgo($submission->created_at),
-                'timestamp' => $submission->created_at->timestamp
-            ];
-        }
-        
-        // Recent nilai (last 10)
-        $recentNilai = Nilai::whereBetween('created_at', $dateRange)
-            ->with(['guru', 'siswa', 'mataPelajaran'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
-        
-        foreach ($recentNilai as $nilai) {
-            $activities[] = [
-                'type' => 'update',
-                'user' => $nilai->guru ? $nilai->guru->nama : 'Guru',
-                'action' => 'menginput nilai untuk',
-                'target' => $nilai->siswa ? $nilai->siswa->nama : 'siswa',
-                'time' => $this->timeAgo($nilai->created_at),
-                'timestamp' => $nilai->created_at->timestamp
-            ];
-        }
-        
-        // Sort by timestamp descending and take 10 most recent
-        usort($activities, function($a, $b) {
-            return $b['timestamp'] <=> $a['timestamp'];
-        });
-        
-        // Remove timestamp field and take only 10
-        $activities = array_slice($activities, 0, 10);
-        foreach ($activities as &$activity) {
-            unset($activity['timestamp']);
-        }
-        
-        return $activities;
+        })->values()->toArray();
     }
     
     /**

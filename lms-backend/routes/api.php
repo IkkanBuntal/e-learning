@@ -17,6 +17,10 @@ use App\Http\Controllers\PengumumanController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CacheController;
+use App\Http\Controllers\HealthController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,12 +35,18 @@ use App\Http\Controllers\CacheController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/health', [HealthController::class, 'check']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('dashboard/stats', [DashboardController::class, 'getStats']);
+    Route::get('/search', [SearchController::class, 'globalSearch']);
+    
+    // Profile routes (Any authenticated user)
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::post('/profile', [ProfileController::class, 'update']);
 
     // Resource routes with role middleware
     Route::middleware(['role:admin'])->group(function () {
@@ -46,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('mata-pelajaran', MataPelajaranController::class);
         Route::apiResource('jadwal-mengajar', JadwalMengajarController::class);
         Route::apiResource('pengumuman', PengumumanController::class);
+        Route::apiResource('roles', RoleController::class);
         Route::get('setting', [SettingController::class, 'show']);
         Route::put('setting', [SettingController::class, 'update']);
         Route::get('laporan/siswa', [DashboardController::class, 'getLaporanSiswa']);

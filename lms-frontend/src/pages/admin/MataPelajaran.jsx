@@ -23,6 +23,10 @@ const MataPelajaran = () => {
   const [jurusanList, setJurusanList] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0); // Force refresh trigger
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const { success, error: showError } = useToast();
 
   // Fetch data
@@ -34,17 +38,30 @@ const MataPelajaran = () => {
         masterDataService.getAllJurusan(),
       ]);
 
-      setMapelList((mapelRes.data || []).map(m => ({
-        id: m.id,
-        kode: m.kode,
-        nama: m.nama,
-        kategori: m.kategori || 'umum',
-        jurusan: m.jurusan?.kode || 'Semua',
-        jurusan_ids: m.jurusan_id ? [m.jurusan_id] : [],
-        sks: m.sks || 4,
-        tingkat: ['10', '11', '12'],
-        is_active: m.is_active !== false,
-      })));
+      setMapelList((mapelRes.data || []).map(m => {
+        let tingkatArray = [];
+        if (m.tingkat === 'X') tingkatArray = ['10'];
+        else if (m.tingkat === 'XI') tingkatArray = ['11'];
+        else if (m.tingkat === 'XII') tingkatArray = ['12'];
+        else tingkatArray = ['10', '11', '12'];
+
+        let kategori = 'umum';
+        if (m.jenis === 'Peminatan') kategori = 'produktif';
+        else if (m.jenis === 'Muatan Lokal') kategori = 'muatan_lokal';
+
+        return {
+          id: m.id,
+          kode: m.kode,
+          nama: m.nama,
+          kategori: kategori,
+          jurusan: m.jurusan?.kode || 'Semua',
+          jurusan_ids: m.jurusan_id ? [m.jurusan_id] : [],
+          sks: m.jam_pelajaran || 2,
+          tingkat: tingkatArray,
+          is_active: m.aktif !== false,
+          deskripsi: m.deskripsi || '',
+        };
+      }));
       
       setJurusanList((jurusanRes.data || []).map(j => ({ id: j.id, kode: j.kode })));
       
@@ -174,6 +191,17 @@ const MataPelajaran = () => {
     return matchesSearch && matchesKategori && matchesJurusan;
   });
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredMapel.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentMapel = filteredMapel.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterKategori, filterJurusan]);
+
   return (
     <div>
       <PageHeader
@@ -249,7 +277,7 @@ const MataPelajaran = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredMapel.length === 0 ? (
+              {currentMapel.length === 0 ? (
                 <tr>
                   <td colSpan="8">
                     <EmptyState
@@ -260,10 +288,10 @@ const MataPelajaran = () => {
                   </td>
                 </tr>
               ) : (
-                filteredMapel.map((mapel, index) => (
+                currentMapel.map((mapel, index) => (
                   <tr key={mapel.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {index + 1}
+                      {startIndex + index + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex px-3 py-1 text-sm font-semibold bg-primary-100 text-primary-700 rounded-lg">
@@ -290,7 +318,9 @@ const MataPelajaran = () => {
                       {mapel.sks}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant="success">Aktif</Badge>
+                      <Badge variant={mapel.is_active ? "success" : "danger"}>
+                        {mapel.is_active ? "Aktif" : "Nonaktif"}
+                      </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <ActionButtons
@@ -310,13 +340,39 @@ const MataPelajaran = () => {
         {filteredMapel.length > 0 && (
           <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              Menampilkan {filteredMapel.length} dari {mapelList.length} mata pelajaran
+              Menampilkan {startIndex + 1} - {Math.min(endIndex, filteredMapel.length)} dari {filteredMapel.length} mata pelajaran
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+              >
                 Previous
               </Button>
-              <Button variant="outline" size="sm" disabled>
+              
+              {/* Page numbers */}
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <Button
+                    key={page}
+                    variant={page === currentPage ? "primary" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className="min-w-[40px]"
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+              >
                 Next
               </Button>
             </div>

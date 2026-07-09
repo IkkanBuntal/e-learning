@@ -55,7 +55,7 @@ class AbsensiController extends Controller
         $validated = $request->validate([
             'siswa_id' => 'required|exists:users,id',
             'guru_id' => 'required|exists:users,id',
-            'mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
             'kelas_id' => 'required|exists:kelas,id',
             'tanggal' => 'required|date',
             'status' => 'required|in:Hadir,Sakit,Izin,Alpa',
@@ -81,7 +81,7 @@ class AbsensiController extends Controller
             'absensi' => 'required|array',
             'absensi.*.siswa_id' => 'required|exists:users,id',
             'absensi.*.guru_id' => 'nullable|exists:users,id',
-            'absensi.*.mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
+            'absensi.*.mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
             'absensi.*.kelas_id' => 'required|exists:kelas,id',
             'absensi.*.tanggal' => 'required|date',
             'absensi.*.status' => 'required|in:Hadir,Sakit,Izin,Alpa',
@@ -140,7 +140,7 @@ class AbsensiController extends Controller
         $validated = $request->validate([
             'siswa_id' => 'exists:users,id',
             'guru_id' => 'exists:users,id',
-            'mata_pelajaran_id' => 'exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'exists:mata_pelajaran,id',
             'kelas_id' => 'exists:kelas,id',
             'tanggal' => 'date',
             'status' => 'in:Hadir,Sakit,Izin,Alpa',
@@ -177,7 +177,7 @@ class AbsensiController extends Controller
     {
         $request->validate([
             'kelas_id' => 'required|exists:kelas,id',
-            'mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
             'tanggal' => 'required|date'
         ]);
 

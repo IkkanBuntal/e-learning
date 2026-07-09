@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\ActivityLog;
 use App\Models\JadwalMengajar;
 
 class JadwalMengajarController extends Controller
@@ -39,16 +40,20 @@ class JadwalMengajarController extends Controller
     {
         $validated = $request->validate([
             'guru_id' => 'required|exists:users,id',
-            'mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
             'kelas_id' => 'required|exists:kelas,id',
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
             'jam_mulai' => 'required|date_format:H:i',
             'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
-            'ruangan' => 'nullable|string|max:50'
+            'ruangan' => 'nullable|string|max:50',
+            'semester' => 'required|in:Ganjil,Genap'
         ]);
+
+        $validated['tahun_ajaran'] = '2024/2025';
 
         $jadwal = JadwalMengajar::create($validated);
         $jadwal->load(['guru', 'mataPelajaran', 'kelas']);
+        ActivityLog::log('create', 'Jadwal', $jadwal->mataPelajaran->nama . ' - ' . $jadwal->kelas->nama, 'Menambahkan jadwal baru');
 
         return response()->json([
             'status' => 'success',
@@ -76,16 +81,18 @@ class JadwalMengajarController extends Controller
     {
         $validated = $request->validate([
             'guru_id' => 'exists:users,id',
-            'mata_pelajaran_id' => 'exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'exists:mata_pelajaran,id',
             'kelas_id' => 'exists:kelas,id',
             'hari' => 'in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
             'jam_mulai' => 'date_format:H:i',
             'jam_selesai' => 'date_format:H:i|after:jam_mulai',
-            'ruangan' => 'nullable|string|max:50'
+            'ruangan' => 'nullable|string|max:50',
+            'semester' => 'in:Ganjil,Genap'
         ]);
 
         $jadwalMengajar->update($validated);
         $jadwalMengajar->load(['guru', 'mataPelajaran', 'kelas']);
+        ActivityLog::log('update', 'Jadwal', $jadwalMengajar->mataPelajaran->nama . ' - ' . $jadwalMengajar->kelas->nama, 'Mengubah data jadwal');
 
         return response()->json([
             'status' => 'success',
@@ -99,6 +106,8 @@ class JadwalMengajarController extends Controller
      */
     public function destroy(JadwalMengajar $jadwalMengajar)
     {
+        $jadwalMengajar->load(['mataPelajaran', 'kelas']);
+        ActivityLog::log('delete', 'Jadwal', $jadwalMengajar->mataPelajaran->nama . ' - ' . $jadwalMengajar->kelas->nama, 'Menghapus jadwal');
         $jadwalMengajar->delete();
         return response()->json([
             'status' => 'success',

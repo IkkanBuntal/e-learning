@@ -42,7 +42,7 @@ class TugasController extends Controller
             'judul' => 'required|string|max:255',
             'deskripsi' => 'nullable|string',
             'guru_id' => 'nullable|exists:users,id',
-            'mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
             'kelas_id' => 'required|exists:kelas,id',
             'deadline' => 'required|date',
             'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,zip|max:10240'
@@ -91,7 +91,7 @@ class TugasController extends Controller
             'judul' => 'string|max:255',
             'deskripsi' => 'nullable|string',
             'guru_id' => 'nullable|exists:users,id',
-            'mata_pelajaran_id' => 'exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'exists:mata_pelajaran,id',
             'kelas_id' => 'exists:kelas,id',
             'deadline' => 'date',
             'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,zip|max:10240'

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
@@ -10,106 +10,99 @@ import {
   Trash2,
   Shield,
   CheckCircle,
-  XCircle
+  XCircle,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
+import roleService from '../../services/roleService';
+
+const AVAILABLE_PERMISSIONS = [
+  { category: 'Users',     items: ['users.create', 'users.read', 'users.update', 'users.delete'] },
+  { category: 'Materi',    items: ['materi.create', 'materi.read', 'materi.update', 'materi.delete'] },
+  { category: 'Tugas',     items: ['tugas.create', 'tugas.read', 'tugas.update', 'tugas.delete', 'tugas.submit'] },
+  { category: 'Nilai',     items: ['nilai.create', 'nilai.read', 'nilai.update', 'nilai.delete'] },
+  { category: 'Absensi',   items: ['absensi.create', 'absensi.read', 'absensi.update', 'absensi.delete'] },
+  { category: 'Laporan',   items: ['reports.view', 'reports.export'] },
+  { category: 'Pengaturan',items: ['settings.manage'] },
+];
+
+const EMPTY_FORM = { name: '', displayName: '', description: '', permissions: [] };
 
 const Roles = () => {
-  const [roles, setRoles] = useState([
-    {
-      id: 1,
-      name: 'admin',
-      displayName: 'Administrator',
-      description: 'Full access ke semua fitur sistem',
-      userCount: 5,
-      permissions: ['users.create', 'users.read', 'users.update', 'users.delete', 'settings.manage', 'reports.view']
-    },
-    {
-      id: 2,
-      name: 'guru',
-      displayName: 'Guru',
-      description: 'Akses untuk mengelola materi, tugas, dan nilai',
-      userCount: 45,
-      permissions: ['materi.create', 'materi.read', 'tugas.create', 'tugas.read', 'nilai.update', 'absensi.update']
-    },
-    {
-      id: 3,
-      name: 'siswa',
-      displayName: 'Siswa',
-      description: 'Akses untuk melihat materi dan mengerjakan tugas',
-      userCount: 1189,
-      permissions: ['materi.read', 'tugas.read', 'tugas.submit', 'nilai.read', 'absensi.read']
-    },
-  ]);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [roles, setRoles]               = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [saving, setSaving]             = useState(false);
+  const [isModalOpen, setIsModalOpen]   = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    displayName: '',
-    description: '',
-    permissions: []
-  });
+  const [formData, setFormData]         = useState(EMPTY_FORM);
+  const [error, setError]               = useState(null);
 
-  // Available permissions
-  const availablePermissions = [
-    { category: 'Users', items: ['users.create', 'users.read', 'users.update', 'users.delete'] },
-    { category: 'Materi', items: ['materi.create', 'materi.read', 'materi.update', 'materi.delete'] },
-    { category: 'Tugas', items: ['tugas.create', 'tugas.read', 'tugas.update', 'tugas.delete', 'tugas.submit'] },
-    { category: 'Nilai', items: ['nilai.create', 'nilai.read', 'nilai.update', 'nilai.delete'] },
-    { category: 'Absensi', items: ['absensi.create', 'absensi.read', 'absensi.update', 'absensi.delete'] },
-    { category: 'Laporan', items: ['reports.view', 'reports.export'] },
-    { category: 'Pengaturan', items: ['settings.manage'] },
-  ];
+  // ── Fetch roles from API ────────────────────────────────────────────────
+  const fetchRoles = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await roleService.getAll();
+      setRoles(res.data ?? []);
+    } catch (err) {
+      setError('Gagal memuat data role. Silakan coba lagi.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => { fetchRoles(); }, []);
+
+  // ── Handlers ────────────────────────────────────────────────────────────
   const handleAdd = () => {
     setSelectedRole(null);
-    setFormData({
-      name: '',
-      displayName: '',
-      description: '',
-      permissions: []
-    });
+    setFormData(EMPTY_FORM);
     setIsModalOpen(true);
   };
 
   const handleEdit = (role) => {
     setSelectedRole(role);
     setFormData({
-      name: role.name,
+      name:        role.name,
       displayName: role.displayName,
       description: role.description,
-      permissions: role.permissions
+      permissions: role.permissions ?? [],
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
-    if (confirm('Yakin ingin menghapus role ini?')) {
-      setRoles(roles.filter(r => r.id !== id));
+  const handleDelete = async (id) => {
+    if (!confirm('Yakin ingin menghapus role ini?')) return;
+    try {
+      await roleService.delete(id);
+      await fetchRoles();
+    } catch (err) {
+      alert(err?.response?.data?.message ?? 'Gagal menghapus role.');
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (selectedRole) {
-      // Update existing role
-      setRoles(roles.map(r => 
-        r.id === selectedRole.id 
-          ? { ...r, ...formData }
-          : r
-      ));
-    } else {
-      // Add new role
-      const newRole = {
-        id: roles.length + 1,
-        ...formData,
-        userCount: 0
+    setSaving(true);
+    try {
+      const payload = {
+        nama:        formData.name,
+        deskripsi:   formData.description,
+        permissions: formData.permissions,
       };
-      setRoles([...roles, newRole]);
+      if (selectedRole) {
+        await roleService.update(selectedRole.id, payload);
+      } else {
+        await roleService.create(payload);
+      }
+      setIsModalOpen(false);
+      await fetchRoles();
+    } catch (err) {
+      alert(err?.response?.data?.message ?? 'Gagal menyimpan role.');
+    } finally {
+      setSaving(false);
     }
-    
-    setIsModalOpen(false);
   };
 
   const togglePermission = (permission) => {
@@ -117,7 +110,7 @@ const Roles = () => {
       ...prev,
       permissions: prev.permissions.includes(permission)
         ? prev.permissions.filter(p => p !== permission)
-        : [...prev.permissions, permission]
+        : [...prev.permissions, permission],
     }));
   };
 
@@ -127,13 +120,49 @@ const Roles = () => {
         title="Role & Permission"
         subtitle="Kelola role pengguna dan hak akses sistem"
         actions={
-          <Button variant="primary" icon={Plus} onClick={handleAdd}>
-            Tambah Role
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchRoles}
+              disabled={loading}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <Button variant="primary" icon={Plus} onClick={handleAdd}>
+              Tambah Role
+            </Button>
+          </div>
         }
       />
 
-      {/* Roles Grid */}
+      {/* Error state */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
+          <p className="text-sm text-red-700">{error}</p>
+          <Button size="sm" variant="secondary" onClick={fetchRoles}>Coba Lagi</Button>
+        </div>
+      )}
+
+      {/* Loading skeleton */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gray-200 rounded-lg animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-3 w-16 bg-gray-200 rounded animate-pulse" />
+                </div>
+              </div>
+              <div className="h-3 w-full bg-gray-200 rounded animate-pulse" />
+              <div className="h-10 bg-gray-200 rounded-lg animate-pulse" />
+              <div className="h-8 bg-gray-200 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {roles.map((role) => (
           <Card key={role.id} className="hover:shadow-lg transition-shadow">
@@ -169,14 +198,14 @@ const Roles = () => {
             <div className="mb-4">
               <p className="text-sm font-medium text-gray-700 mb-2">Permissions:</p>
               <div className="flex flex-wrap gap-2">
-                {role.permissions.slice(0, 3).map((permission, index) => (
+                {(role.permissions ?? []).slice(0, 3).map((permission, index) => (
                   <Badge key={index} variant="info" size="sm">
                     {permission.split('.')[0]}
                   </Badge>
                 ))}
-                {role.permissions.length > 3 && (
+                {(role.permissions ?? []).length > 3 && (
                   <Badge variant="secondary" size="sm">
-                    +{role.permissions.length - 3} more
+                    +{(role.permissions ?? []).length - 3} more
                   </Badge>
                 )}
               </div>
@@ -206,6 +235,7 @@ const Roles = () => {
           </Card>
         ))}
       </div>
+      )}
 
       {/* Modal Form */}
       <Modal
@@ -223,30 +253,19 @@ const Roles = () => {
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="contoh: admin, guru, siswa"
+              placeholder="contoh: wali_kelas"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={!!selectedRole} // nama tidak bisa diubah saat edit
               required
             />
-            <p className="text-xs text-gray-500 mt-1">Lowercase, tanpa spasi</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {selectedRole ? 'Nama role tidak dapat diubah.' : 'Lowercase, tanpa spasi.'}
+            </p>
           </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Display Name
-            </label>
-            <input
-              type="text"
-              value={formData.displayName}
-              onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-              placeholder="contoh: Administrator"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
+              Deskripsi
             </label>
             <textarea
               value={formData.description}
@@ -254,7 +273,6 @@ const Roles = () => {
               rows={3}
               placeholder="Deskripsi role..."
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              required
             />
           </div>
           
@@ -262,8 +280,8 @@ const Roles = () => {
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Permissions
             </label>
-            <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4 space-y-4">
-              {availablePermissions.map((category, catIndex) => (
+            <div className="max-h-72 overflow-y-auto border border-gray-200 rounded-lg p-4 space-y-4">
+              {AVAILABLE_PERMISSIONS.map((category, catIndex) => (
                 <div key={catIndex}>
                   <p className="text-sm font-semibold text-gray-900 mb-2">{category.category}</p>
                   <div className="space-y-2 ml-4">
@@ -292,8 +310,11 @@ const Roles = () => {
             >
               Batal
             </Button>
-            <Button type="submit" variant="primary">
-              {selectedRole ? 'Update' : 'Simpan'}
+            <Button type="submit" variant="primary" disabled={saving}>
+              {saving
+                ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</span>
+                : selectedRole ? 'Update' : 'Simpan'
+              }
             </Button>
           </div>
         </form>
@@ -315,7 +336,7 @@ const Roles = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {availablePermissions.map((category) => (
+              {AVAILABLE_PERMISSIONS.map((category) => (
                 category.items.map((permission, index) => (
                   <tr key={permission} className="hover:bg-gray-50">
                     <td className="py-3 px-4 text-sm text-gray-900">
@@ -326,7 +347,7 @@ const Roles = () => {
                     </td>
                     {roles.map((role) => (
                       <td key={role.id} className="py-3 px-4 text-center">
-                        {role.permissions.includes(permission) ? (
+                        {(role.permissions ?? []).includes(permission) ? (
                           <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
                         ) : (
                           <XCircle className="w-5 h-5 text-gray-300 mx-auto" />

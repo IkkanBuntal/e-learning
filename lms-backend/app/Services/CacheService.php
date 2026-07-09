@@ -134,11 +134,32 @@ class CacheService
 
     /**
      * Clear dashboard cache
+     * Compatible with both Redis and file cache drivers.
      */
     public static function clearDashboardCache(int $userId = null): void
     {
-        $pattern = self::PATTERN_DASHBOARD . ($userId ? $userId : '*');
-        self::clearByPattern($pattern);
+        $driver = config('cache.default');
+
+        if ($driver === 'redis') {
+            // Redis supports key pattern scanning
+            $pattern = self::PATTERN_DASHBOARD . ($userId ? $userId : '*');
+            self::clearByPattern($pattern);
+        } else {
+            // For file/database/array drivers: forget known key combinations
+            $roles   = ['admin', 'guru', 'siswa'];
+            $periods = ['today', 'week', 'month', 'year'];
+
+            if ($userId) {
+                foreach ($roles as $role) {
+                    foreach ($periods as $period) {
+                        Cache::forget(self::PATTERN_DASHBOARD . "{$role}:{$userId}:{$period}");
+                    }
+                }
+            } else {
+                // No specific user — flush all app cache (safe for small apps)
+                Cache::flush();
+            }
+        }
     }
 
     /**

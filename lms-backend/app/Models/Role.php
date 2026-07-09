@@ -13,6 +13,15 @@ class Role extends Model
     protected $fillable = [
         'nama',
         'deskripsi',
+        'permissions',
+    ];
+
+    /**
+     * Cast permissions JSON column to array automatically
+     * (Laravel 13 docs: https://laravel.com/docs/13.x/eloquent-mutators#array-and-json-casting)
+     */
+    protected $casts = [
+        'permissions' => 'array',
     ];
 
     /**

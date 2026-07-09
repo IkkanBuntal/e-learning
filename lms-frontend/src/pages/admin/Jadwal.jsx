@@ -33,6 +33,10 @@ const Jadwal = () => {
   const [jadwalList, setJadwalList] = useState([]);
   const [kelasList, setKelasList] = useState([]);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const hariOptions = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
   // Fetch jadwal data
@@ -90,7 +94,18 @@ const Jadwal = () => {
     return matchSearch && matchKelas && matchHari && matchSemester;
   });
 
-  // Group jadwal by hari for calendar view
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredJadwal.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentJadwal = filteredJadwal.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterKelas, filterHari, filterSemester, view]);
+
+  // Group jadwal by hari for calendar view (uses all filtered data)
   const groupedJadwal = hariOptions.reduce((acc, hari) => {
     acc[hari] = filteredJadwal
       .filter(j => j.hari === hari)
@@ -303,16 +318,6 @@ const Jadwal = () => {
               <option value="Genap">Genap</option>
             </select>
           </div>
-
-          {/* Buttons */}
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={handleExportPDF} size="sm">
-              Export PDF
-            </Button>
-            <Button variant="primary" onClick={handleAdd} size="sm">
-              + Tambah Jadwal
-            </Button>
-          </div>
         </div>
       </div>
 
@@ -350,7 +355,7 @@ const Jadwal = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredJadwal.length === 0 ? (
+                {currentJadwal.length === 0 ? (
                   <tr>
                     <td colSpan="8" className="px-6 py-12 text-center">
                       <div className="text-gray-400">
@@ -364,10 +369,10 @@ const Jadwal = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredJadwal.map((jadwal, index) => (
+                  currentJadwal.map((jadwal, index) => (
                     <tr key={jadwal.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {index + 1}
+                        {startIndex + index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {jadwal.hari}
@@ -409,13 +414,39 @@ const Jadwal = () => {
           {filteredJadwal.length > 0 && (
             <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
               <p className="text-sm text-gray-600">
-                Menampilkan {filteredJadwal.length} dari {jadwalList.length} jadwal
+                Menampilkan {startIndex + 1} - {Math.min(endIndex, filteredJadwal.length)} dari {filteredJadwal.length} jadwal
               </p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                >
                   Previous
                 </Button>
-                <Button variant="outline" size="sm" disabled>
+                
+                {/* Page numbers */}
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "primary" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="min-w-[40px]"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                >
                   Next
                 </Button>
               </div>

@@ -50,7 +50,7 @@ class NilaiController extends Controller
         $validated = $request->validate([
             'siswa_id' => 'required|exists:users,id',
             'guru_id' => 'required|exists:users,id',
-            'mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
             'kelas_id' => 'required|exists:kelas,id',
             'nilai' => 'required|numeric|min:0|max:100',
             'jenis' => 'required|in:UH,UTS,UAS,Tugas',
@@ -76,7 +76,7 @@ class NilaiController extends Controller
             'nilai' => 'required|array',
             'nilai.*.siswa_id' => 'required|exists:users,id',
             'nilai.*.guru_id' => 'nullable|exists:users,id',
-            'nilai.*.mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
+            'nilai.*.mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
             'nilai.*.kelas_id' => 'required|exists:kelas,id',
             'nilai.*.nilai' => 'required|numeric|min:0|max:100',
             'nilai.*.jenis' => 'required|in:UH,UTS,UAS,Tugas',
@@ -135,7 +135,7 @@ class NilaiController extends Controller
         $validated = $request->validate([
             'siswa_id' => 'exists:users,id',
             'guru_id' => 'exists:users,id',
-            'mata_pelajaran_id' => 'exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'exists:mata_pelajaran,id',
             'kelas_id' => 'exists:kelas,id',
             'nilai' => 'numeric|min:0|max:100',
             'jenis' => 'in:UH,UTS,UAS,Tugas',
@@ -172,7 +172,7 @@ class NilaiController extends Controller
     {
         $request->validate([
             'kelas_id' => 'required|exists:kelas,id',
-            'mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
+            'mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
             'jenis' => 'required|in:UH,UTS,UAS,Tugas'
         ]);
 
