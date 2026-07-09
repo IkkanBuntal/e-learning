@@ -48,3 +48,7 @@ lms-backend/bootstrap/cache/*.php
 # Temporary files
 *.tmp
 *.temp
+
+# Scripts
+push-to-github.sh
+
