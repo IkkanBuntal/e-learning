@@ -14,7 +14,6 @@ use App\Models\Nilai;
 use App\Models\Absensi;
 use App\Models\PengumpulanTugas;
 use App\Models\JadwalMengajar;
-use App\Models\ActivityLog;
 use App\Services\CacheService;
 
 class DashboardController extends Controller
@@ -31,8 +30,8 @@ class DashboardController extends Controller
         // Cache key based on role, user ID, and period
         $cacheKey = CacheService::PATTERN_DASHBOARD . "{$role}:{$user->id}:{$period}";
         
-        // Use cache with 5 minutes TTL for dashboard data
-        $data = CacheService::remember($cacheKey, CacheService::TTL_SHORT, function() use ($user, $role, $period) {
+        // Use cache with 30 seconds TTL for dashboard data (so recent activities update quickly)
+        $data = CacheService::remember($cacheKey, 30, function() use ($user, $role, $period) {
             return $this->generateDashboardStats($user, $role, $period);
         });
         
@@ -104,7 +103,7 @@ class DashboardController extends Controller
                     'totalMapel' => MataPelajaran::count(),
                     'totalJadwal' => JadwalMengajar::where('aktif', true)->count(),
                     'siswaPerJurusan' => $siswaPerJurusan->values()->toArray(), // Force to array
-                    'recentActivities' => $this->getRecentActivities($dateRange)
+                    'recentActivities' => $this->getRecentActivities()
                 ]
             ];
         } 
@@ -405,20 +404,21 @@ class DashboardController extends Controller
                 'avgNilai' => round($siswa->nilai_avg_nilai ?? 0, 1),
                 'kehadiran' => $kehadiran,
                 'tugasSelesai' => $siswa->tugas_selesai,
-                'totalTugas' => $totalTugasGlobal, // Assuming total tugas applies to all, or we could calculate per kelas
-                'ranking' => 0, // Will sort and assign later
-                'trend' => rand(0, 1) ? 'up' : 'down' // Mock trend since historical data is complex
+                'totalTugas' => $totalTugasGlobal,
+                'ranking' => 0,
+                'trend' => rand(0, 1) ? 'up' : 'down'
             ];
-        })->sortByDesc('avgNilai')->values();
+        })->sortByDesc('avgNilai')->values()->all();
 
         // Assign rankings
-        foreach ($formattedData as $index => $item) {
-            $item['ranking'] = $index + 1;
-            // Update array item
-            $formattedData[$index] = $item;
+        $rankedData = [];
+        $rank = 1;
+        foreach ($formattedData as $item) {
+            $item['ranking'] = $rank++;
+            $rankedData[] = $item;
         }
 
-        return $formattedData;
+        return $rankedData;
     }
 
     /**
@@ -496,44 +496,99 @@ class DashboardController extends Controller
             ];
         });
 
-        return $formattedData;
+        return $formattedData->values()->all();
     }
     
     /**
      * Get recent activities from activity_logs table
      */
-    private function getRecentActivities($dateRange)
+    private function getRecentActivities()
     {
-        $logs = ActivityLog::with('user')
-            ->whereBetween('created_at', $dateRange)
+        $activities = [];
+        
+        // Recent users (last 5)
+        $recentUsers = User::with('role')
+        
+        // Recent materi (last 5)
+        $recentMateri = Materi::with(['guru', 'mataPelajaran'])
             ->orderBy('created_at', 'desc')
-            ->limit(20)
+            ->limit(5)
             ->get();
-
-        // If no logs in date range, show latest 10 regardless of period
-        if ($logs->isEmpty()) {
-            $logs = ActivityLog::with('user')
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get();
-        }
-
-        $actionMap = [
-            'create' => 'menambahkan',
-            'update' => 'mengubah',
-            'delete' => 'menghapus',
-        ];
-
-        return $logs->map(function($log) use ($actionMap) {
-            return [
-                'type'   => $log->action,
-                'user'   => $log->user_name ?? 'Admin',
-                'action' => ($actionMap[$log->action] ?? $log->action) . ' ' . $log->module,
-                'target' => $log->target_name ?? '',
-                'time'   => $this->timeAgo($log->created_at),
-                'module' => $log->module,
+        
+        foreach ($recentMateri as $materi) {
+            $activities[] = [
+                'type' => 'upload',
+                'user' => $materi->guru ? $materi->guru->nama : 'Guru',
+                'action' => 'mengupload materi',
+                'target' => $materi->mataPelajaran ? $materi->mataPelajaran->nama : $materi->judul,
+                'time' => $this->timeAgo($materi->created_at),
+                'timestamp' => $materi->created_at->timestamp
             ];
-        })->values()->toArray();
+        }
+        
+        // Recent tugas (last 5)
+        $recentTugas = Tugas::with(['guru', 'mataPelajaran'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentTugas as $tugas) {
+            $activities[] = [
+                'type' => 'create',
+                'user' => $tugas->guru ? $tugas->guru->nama : 'Guru',
+                'action' => 'membuat tugas',
+                'target' => $tugas->judul,
+                'time' => $this->timeAgo($tugas->created_at),
+                'timestamp' => $tugas->created_at->timestamp
+            ];
+        }
+        
+        // Recent submissions (last 5)
+        $recentSubmissions = PengumpulanTugas::with(['siswa', 'tugas'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentSubmissions as $submission) {
+            $activities[] = [
+                'type' => 'upload',
+                'user' => $submission->siswa ? $submission->siswa->nama : 'Siswa',
+                'action' => 'mengumpulkan tugas',
+                'target' => $submission->tugas ? $submission->tugas->judul : 'tugas',
+                'time' => $this->timeAgo($submission->created_at),
+                'timestamp' => $submission->created_at->timestamp
+            ];
+        }
+        
+        // Recent nilai (last 5)
+        $recentNilai = Nilai::with(['guru', 'siswa', 'mataPelajaran'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentNilai as $nilai) {
+            $activities[] = [
+                'type' => 'update',
+                'user' => $nilai->guru ? $nilai->guru->nama : 'Guru',
+                'action' => 'menginput nilai untuk',
+                'target' => $nilai->siswa ? $nilai->siswa->nama : 'siswa',
+                'time' => $this->timeAgo($nilai->created_at),
+                'timestamp' => $nilai->created_at->timestamp
+            ];
+        }
+        
+        // Sort by timestamp descending and take 10 most recent
+        usort($activities, function($a, $b) {
+            return $b['timestamp'] <=> $a['timestamp'];
+        });
+        
+        // Remove timestamp field and take only 10
+        $activities = array_slice($activities, 0, 10);
+        foreach ($activities as &$activity) {
+            unset($activity['timestamp']);
+        }
+        
+        return $activities;
     }
     
     /**

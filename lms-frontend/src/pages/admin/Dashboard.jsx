@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import StatCard from '../../components/common/StatCard';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
@@ -59,6 +60,7 @@ const latencyLabel = (ms) => {
 };
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -355,7 +357,7 @@ const AdminDashboard = () => {
             )}
           </div>
           <div className="mt-6 pt-4 border-t">
-            <Button variant="secondary" size="sm" className="w-full" icon={BarChart3}>
+            <Button variant="secondary" size="sm" className="w-full" icon={BarChart3} onClick={() => navigate('/admin/laporan/statistik')}>
               Lihat Detail Statistik
             </Button>
           </div>
@@ -437,19 +439,19 @@ const AdminDashboard = () => {
             Quick Actions
           </h3>
           <div className="grid grid-cols-2 gap-3">
-            <button className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors">
+            <button onClick={() => navigate('/admin/users')} className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors">
               <Users className="w-6 h-6" />
               <span className="text-sm font-medium">Tambah User</span>
             </button>
-            <button className="flex flex-col items-center gap-2 p-4 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors">
+            <button onClick={() => navigate('/admin/jurusan')} className="flex flex-col items-center gap-2 p-4 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors">
               <GraduationCap className="w-6 h-6" />
               <span className="text-sm font-medium">Tambah Jurusan</span>
             </button>
-            <button className="flex flex-col items-center gap-2 p-4 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg transition-colors">
+            <button onClick={() => navigate('/admin/kelas')} className="flex flex-col items-center gap-2 p-4 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg transition-colors">
               <BookOpen className="w-6 h-6" />
               <span className="text-sm font-medium">Tambah Kelas</span>
             </button>
-            <button className="flex flex-col items-center gap-2 p-4 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors">
+            <button onClick={() => navigate('/admin/jadwal')} className="flex flex-col items-center gap-2 p-4 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors">
               <Calendar className="w-6 h-6" />
               <span className="text-sm font-medium">Atur Jadwal</span>
             </button>
@@ -600,7 +602,7 @@ const AdminDashboard = () => {
           )}
 
           <div className="mt-4">
-            <Button variant="secondary" size="sm" className="w-full" icon={FileText}>
+            <Button variant="secondary" size="sm" className="w-full" icon={FileText} onClick={() => navigate('/admin/settings')}>
               Lihat Log Sistem
             </Button>
           </div>

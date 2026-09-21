@@ -27,9 +27,12 @@ class PengumumanController extends Controller
         $validated = $request->validate([
             'judul' => 'required|string|max:255',
             'isi' => 'required|string',
-            'admin_id' => 'required|exists:users,id',
-            'tanggal' => 'required|date'
+            'admin_id' => 'nullable|exists:users,id',
+            'tanggal' => 'nullable|date'
         ]);
+
+        $validated['admin_id'] = $validated['admin_id'] ?? $request->user()->id;
+        $validated['tanggal'] = $validated['tanggal'] ?? now()->toDateString();
 
         $pengumuman = Pengumuman::create($validated);
         $pengumuman->load('admin');

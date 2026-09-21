@@ -33,6 +33,24 @@ class DatabaseSeeder extends Seeder
 
             // 7. System Settings (singleton row)
             SettingSeeder::class,
+
+            // 8. Materi (requires guru + mata_pelajaran + kelas)
+            MateriSeeder::class,
+
+            // 9. Tugas (requires guru + mata_pelajaran + kelas)
+            TugasSeeder::class,
+
+            // 10. Pengumpulan Tugas (requires tugas + siswa)
+            PengumpulanTugasSeeder::class,
+
+            // 11. Nilai (requires siswa + mata_pelajaran + guru)
+            NilaiSeeder::class,
+
+            // 12. Absensi (requires siswa + kelas + mata_pelajaran + guru)
+            AbsensiSeeder::class,
+
+            // 13. Pengumuman (requires admin user)
+            PengumumanSeeder::class,
         ]);
     }
 }

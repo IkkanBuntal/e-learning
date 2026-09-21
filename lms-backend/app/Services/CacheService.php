@@ -61,15 +61,32 @@ class CacheService
      */
     public static function clearByPattern(string $pattern): void
     {
-        $keys = Cache::getRedis()->keys("*{$pattern}*");
-        
-        if (!empty($keys)) {
-            foreach ($keys as $key) {
-                // Remove prefix from key if exists
-                $cleanKey = str_replace(config('cache.prefix'), '', $key);
-                Cache::forget($cleanKey);
+        try {
+            if (config('cache.default') === 'redis') {
+                $redis = Cache::getRedis();
+                $keys = $redis->keys("*{$pattern}*");
+                
+                if (!empty($keys)) {
+                    foreach ($keys as $key) {
+                        // Remove prefix from key if exists
+                        $cleanKey = str_replace(config('cache.prefix'), '', $key);
+                        Cache::forget($cleanKey);
+                    }
+                }
+            } else {
+                Cache::flush();
             }
+        } catch (\Throwable $e) {
+            // Gracefully ignore cache clearing failure
         }
+    }
+
+    /**
+     * Clear cache by pattern (alias)
+     */
+    public static function clearPattern(string $pattern): void
+    {
+        self::clearByPattern($pattern);
     }
 
     /**

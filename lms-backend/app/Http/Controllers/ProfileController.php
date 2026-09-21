@@ -5,23 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use App\Models\User;
-use App\Models\ActivityLog;
 
-/**
- * ProfileController — handles personal profile updates
- * for the currently authenticated user (Admin, Guru, or Siswa).
- *
- * Routes (protected by auth:sanctum):
- *   GET /api/profile        → show   (get current user details)
- *   PUT /api/profile        → update (update name, email, phone, address, photo, password)
- */
 class ProfileController extends Controller
 {
     /**
-     * GET /api/profile
-     * Returns the currently authenticated user details.
+     * Get authenticated user profile
      */
     public function show(Request $request)
     {
@@ -34,8 +24,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * PUT /api/profile
-     * Updates personal user info, profile photo, and password.
+     * Update user profile information
      */
     public function update(Request $request)
     {
@@ -43,76 +32,58 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'nama' => 'sometimes|required|string|max:255',
-            'email' => [
-                'sometimes',
-                'required',
-                'email',
-                Rule::unique('users')->ignore($user->id),
-            ],
-            'no_telp' => 'nullable|string|max:20',
+            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
+            'jenis_kelamin' => 'nullable|in:L,P',
             'alamat' => 'nullable|string',
-            'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // max 2MB
-            
-            // Password change fields
-            'current_password' => 'required_with:password|nullable|string',
-            'password' => 'nullable|string|min:6|confirmed', // password_confirmation must be passed
+            'no_telp' => 'nullable|string|max:20',
+            'tanggal_lahir' => 'nullable|date',
+            'tempat_lahir' => 'nullable|string|max:100',
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048'
         ]);
 
-        // Validate current password if password is being updated
-        if (!empty($validated['password'])) {
-            if (!Hash::check($validated['current_password'], $user->password)) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Password saat ini salah',
-                    'errors' => [
-                        'current_password' => ['Password saat ini tidak sesuai dengan database kami.']
-                    ]
-                ], 422);
-            }
-            $user->password = Hash::make($validated['password']);
-        }
-
-        // Handle profile photo upload or deletion
-        if ($request->boolean('delete_photo')) {
-            if ($user->foto) {
+        if ($request->hasFile('foto')) {
+            if ($user->foto && Storage::disk('public')->exists($user->foto)) {
                 Storage::disk('public')->delete($user->foto);
             }
-            $user->foto = null;
-        } elseif ($request->hasFile('foto')) {
-            // Delete old photo if it exists
-            if ($user->foto) {
-                Storage::disk('public')->delete($user->foto);
-            }
-            $path = $request->file('foto')->store('avatars', 'public');
-            $user->foto = $path;
+            $validated['foto'] = $request->file('foto')->store('avatars', 'public');
         }
 
-        // Update other fields
-        if ($request->has('nama')) {
-            $user->nama = $validated['nama'];
-        }
-        if ($request->has('email')) {
-            $user->email = $validated['email'];
-        }
-        if ($request->has('no_telp')) {
-            $user->no_telp = $validated['no_telp'];
-        }
-        if ($request->has('alamat')) {
-            $user->alamat = $validated['alamat'];
-        }
-
-        $user->save();
-
-        // Refresh user relation details for response
+        $user->update($validated);
         $user->load(['role', 'kelas.jurusan']);
-
-        // Log action
-        ActivityLog::log('update', 'Profil', $user->nama, "Memperbarui pengaturan profil mandiri");
 
         return response()->json([
             'status' => 'success',
             'message' => 'Profil berhasil diperbarui',
             'data' => $user
+        ]);
+    }
+
+    /**
+     * Update user password
+     */
+    public function changePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Password lama tidak sesuai'
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($validated['password'])
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Password berhasil diubah'
         ]);
     }
 }

@@ -29,9 +29,12 @@ const LaporanGuru = () => {
       try {
         setLoading(true);
         const res = await dashboardService.getLaporanGuru({ search: filters.search });
-        setLaporanData(res.data || []);
+        const rawData = res?.data || res || [];
+        const dataArray = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.data) ? rawData.data : Object.values(rawData || {}));
+        setLaporanData(dataArray);
       } catch (error) {
         console.error('Error fetching laporan guru:', error);
+        setLaporanData([]);
       } finally {
         setLoading(false);
       }
@@ -40,14 +43,16 @@ const LaporanGuru = () => {
     fetchData();
   }, [filters.search]);
 
-  const totalMateriAll = laporanData.reduce((sum, g) => sum + g.materiUpload, 0);
-  const totalTugasAll = laporanData.reduce((sum, g) => sum + g.tugasDibuat, 0);
-  const avgKehadiran = laporanData.length > 0
-    ? Math.round((laporanData.reduce((sum, g) => sum + g.kehadiranMengajar, 0) / laporanData.length) * 10) / 10
+  const validData = Array.isArray(laporanData) ? laporanData : [];
+
+  const totalMateriAll = validData.reduce((sum, g) => sum + (Number(g.materiUpload) || 0), 0);
+  const totalTugasAll = validData.reduce((sum, g) => sum + (Number(g.tugasDibuat) || 0), 0);
+  const avgKehadiran = validData.length > 0
+    ? Math.round((validData.reduce((sum, g) => sum + (Number(g.kehadiranMengajar) || 0), 0) / validData.length) * 10) / 10
     : 0;
 
   const summary = {
-    totalGuru: laporanData.length,
+    totalGuru: validData.length,
     avgKehadiran,
     totalMateri: totalMateriAll,
     totalTugas: totalTugasAll,
@@ -56,39 +61,39 @@ const LaporanGuru = () => {
   const summaryStats = [
     {
       title: 'Total Guru',
-      value: '45',
+      value: String(summary.totalGuru ?? 0),
       icon: GraduationCap,
       iconBgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
-      trend: 12,
-      trendLabel: 'vs last month',
+      trend: 0,
+      trendLabel: 'aktif',
     },
     {
       title: 'Avg Kehadiran',
-      value: '96.3%',
+      value: `${summary.avgKehadiran ?? 0}%`,
       icon: CheckCircle,
       iconBgColor: 'bg-green-100',
       iconColor: 'text-green-600',
-      trend: 2,
-      trendLabel: 'vs last month',
+      trend: 0,
+      trendLabel: 'mengajar',
     },
     {
       title: 'Total Materi',
-      value: '342',
+      value: String(summary.totalMateri ?? 0),
       icon: BookOpen,
       iconBgColor: 'bg-purple-100',
       iconColor: 'text-purple-600',
-      trend: 15,
-      trendLabel: 'vs last month',
+      trend: 0,
+      trendLabel: 'diunggah',
     },
     {
       title: 'Total Tugas',
-      value: '215',
+      value: String(summary.totalTugas ?? 0),
       icon: ClipboardList,
       iconBgColor: 'bg-yellow-100',
       iconColor: 'text-yellow-600',
-      trend: 8,
-      trendLabel: 'vs last month',
+      trend: 0,
+      trendLabel: 'diberikan',
     },
   ];
 
@@ -172,51 +177,59 @@ const LaporanGuru = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {laporanData.map((guru) => (
-                <tr key={guru.id} className="hover:bg-gray-50">
-                  <td className="py-4 px-4 text-sm font-medium text-gray-900 max-w-[160px] truncate">{guru.email}</td>
-                  <td className="py-4 px-4 text-sm text-gray-900">{guru.nama}</td>
-                  <td className="py-4 px-4 text-sm text-gray-600">{guru.mataPelajaran}</td>
-                  <td className="py-4 px-4 text-center text-sm font-semibold text-gray-900">
-                    {guru.totalKelas}
-                  </td>
-                  <td className="py-4 px-4 text-center text-sm text-gray-600">
-                    {guru.totalSiswa}
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <Badge variant="primary" size="sm">{guru.materiUpload}</Badge>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <Badge variant="success" size="sm">{guru.tugasDibuat}</Badge>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className={`font-semibold ${
-                      guru.avgNilaiSiswa >= 85 ? 'text-green-600' :
-                      guru.avgNilaiSiswa >= 75 ? 'text-blue-600' :
-                      'text-yellow-600'
-                    }`}>
-                      {guru.avgNilaiSiswa}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className={`font-semibold ${
-                      guru.kehadiranMengajar >= 95 ? 'text-green-600' :
-                      guru.kehadiranMengajar >= 85 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {guru.kehadiranMengajar}%
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <Badge 
-                      variant={guru.statusAktif ? 'success' : 'danger'}
-                      size="sm"
-                    >
-                      {guru.statusAktif ? 'Aktif' : 'Non-Aktif'}
-                    </Badge>
+              {validData.length === 0 ? (
+                <tr>
+                  <td colSpan="10" className="py-8 text-center text-gray-500">
+                    Tidak ada data guru yang cocok dengan filter
                   </td>
                 </tr>
-              ))}
+              ) : (
+                validData.map((guru) => (
+                  <tr key={guru.id} className="hover:bg-gray-50">
+                    <td className="py-4 px-4 text-sm font-medium text-gray-900 max-w-[160px] truncate">{guru.email}</td>
+                    <td className="py-4 px-4 text-sm text-gray-900">{guru.nama}</td>
+                    <td className="py-4 px-4 text-sm text-gray-600">{guru.mataPelajaran}</td>
+                    <td className="py-4 px-4 text-center text-sm font-semibold text-gray-900">
+                      {guru.totalKelas}
+                    </td>
+                    <td className="py-4 px-4 text-center text-sm text-gray-600">
+                      {guru.totalSiswa}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <Badge variant="primary" size="sm">{guru.materiUpload}</Badge>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <Badge variant="success" size="sm">{guru.tugasDibuat}</Badge>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className={`font-semibold ${
+                        guru.avgNilaiSiswa >= 85 ? 'text-green-600' :
+                        guru.avgNilaiSiswa >= 75 ? 'text-blue-600' :
+                        'text-yellow-600'
+                      }`}>
+                        {guru.avgNilaiSiswa}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className={`font-semibold ${
+                        guru.kehadiranMengajar >= 95 ? 'text-green-600' :
+                        guru.kehadiranMengajar >= 85 ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {guru.kehadiranMengajar}%
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <Badge 
+                        variant={guru.statusAktif ? 'success' : 'danger'}
+                        size="sm"
+                      >
+                        {guru.statusAktif ? 'Aktif' : 'Non-Aktif'}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -230,7 +243,7 @@ const LaporanGuru = () => {
             Top 5 Guru Berdasarkan Materi
           </h3>
           <div className="space-y-3">
-            {[...laporanData]
+            {[...validData]
               .sort((a, b) => b.materiUpload - a.materiUpload)
               .slice(0, 5)
               .map((guru, index) => (
@@ -260,7 +273,7 @@ const LaporanGuru = () => {
             Top 5 Guru Berdasarkan Avg Nilai Siswa
           </h3>
           <div className="space-y-3">
-            {[...laporanData]
+            {[...validData]
               .sort((a, b) => b.avgNilaiSiswa - a.avgNilaiSiswa)
               .slice(0, 5)
               .map((guru, index) => (

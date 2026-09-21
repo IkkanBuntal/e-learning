@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\JurusanController;
 use App\Http\Controllers\KelasController;
@@ -41,6 +43,13 @@ Route::get('/health', [HealthController::class, 'check']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    
+    // User Profile routes (all authenticated users)
+    Route::get('profile', [ProfileController::class, 'show']);
+    Route::put('profile', [ProfileController::class, 'update']);
+    Route::post('profile', [ProfileController::class, 'update']);
+    Route::post('profile/change-password', [ProfileController::class, 'changePassword']);
+
     Route::get('dashboard/stats', [DashboardController::class, 'getStats']);
     Route::get('/search', [SearchController::class, 'globalSearch']);
     
@@ -48,8 +57,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'update']);
 
-    // Resource routes with role middleware
+    // Admin-only routes
     Route::middleware(['role:admin'])->group(function () {
+        Route::apiResource('roles', RoleController::class);
         Route::apiResource('users', UserController::class);
         Route::apiResource('jurusan', JurusanController::class);
         Route::apiResource('kelas', KelasController::class);
@@ -71,15 +81,11 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
+    // Admin & Guru management routes
     Route::middleware(['role:admin,guru'])->group(function () {
         Route::apiResource('materi', MateriController::class)->except(['show', 'index']);
-        Route::post('materi/{materi}/download', [MateriController::class, 'download']);
-        
         Route::apiResource('tugas', TugasController::class)->except(['show', 'index']);
-        Route::post('tugas/{tugas}/download', [TugasController::class, 'download']);
-        
         Route::apiResource('pengumpulan-tugas', PengumpulanTugasController::class)->except(['store', 'show', 'index']);
-        Route::post('pengumpulan-tugas/{pengumpulanTugas}/download', [PengumpulanTugasController::class, 'download']);
         
         Route::get('nilai/kelas', [NilaiController::class, 'getNilaiByKelas']);
         Route::apiResource('nilai', NilaiController::class);
@@ -90,17 +96,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('absensi/bulk', [AbsensiController::class, 'storeBulk']);
     });
 
-    Route::middleware(['role:guru,siswa'])->group(function () {
+    // General read & download routes (Admin, Guru, Siswa)
+    Route::middleware(['role:admin,guru,siswa'])->group(function () {
         Route::get('materi', [MateriController::class, 'index']);
         Route::get('materi/{materi}', [MateriController::class, 'show']);
+        Route::match(['get', 'post'], 'materi/{materi}/download', [MateriController::class, 'download']);
         
         Route::get('tugas', [TugasController::class, 'index']);
         Route::get('tugas/{tugas}', [TugasController::class, 'show']);
+        Route::match(['get', 'post'], 'tugas/{tugas}/download', [TugasController::class, 'download']);
         
+        Route::match(['get', 'post'], 'pengumpulan-tugas/{pengumpulanTugas}/download', [PengumpulanTugasController::class, 'download']);
+
         Route::get('pengumuman', [PengumumanController::class, 'index']);
         Route::get('pengumuman/{pengumuman}', [PengumumanController::class, 'show']);
     });
 
+    // Siswa-specific routes
     Route::middleware(['role:siswa'])->group(function () {
         Route::post('pengumpulan-tugas', [PengumpulanTugasController::class, 'store']);
         Route::get('pengumpulan-tugas', [PengumpulanTugasController::class, 'index']);

@@ -77,7 +77,7 @@ const Statistik = () => {
   const overallStatsCards = [
     {
       title: 'Total Siswa',
-      value: stats.totalSiswa.toLocaleString(),
+      value: Number(stats?.totalSiswa ?? 0).toLocaleString(),
       icon: Users,
       iconBgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
@@ -86,7 +86,7 @@ const Statistik = () => {
     },
     {
       title: 'Total Guru',
-      value: stats.totalGuru.toString(),
+      value: String(stats?.totalGuru ?? 0),
       icon: GraduationCap,
       iconBgColor: 'bg-green-100',
       iconColor: 'text-green-600',
@@ -95,7 +95,7 @@ const Statistik = () => {
     },
     {
       title: 'Total Materi',
-      value: stats.totalMateri.toString(),
+      value: String(stats?.totalMateri ?? 0),
       icon: BookOpen,
       iconBgColor: 'bg-purple-100',
       iconColor: 'text-purple-600',
@@ -104,7 +104,7 @@ const Statistik = () => {
     },
     {
       title: 'Total Tugas',
-      value: stats.totalTugas.toString(),
+      value: String(stats?.totalTugas ?? 0),
       icon: ClipboardList,
       iconBgColor: 'bg-yellow-100',
       iconColor: 'text-yellow-600',
@@ -114,10 +114,10 @@ const Statistik = () => {
   ];
 
   const growthData = [
-    { label: 'Siswa Baru', value: stats.totalSiswa, change: 'total', positive: true },
-    { label: 'Guru Baru', value: stats.totalGuru, change: 'total', positive: true },
-    { label: 'Materi Upload', value: stats.totalMateri, change: 'total', positive: true },
-    { label: 'Avg Kehadiran', value: `${stats.avgKehadiran}%`, change: 'avg', positive: true },
+    { label: 'Siswa Baru', value: stats?.totalSiswa ?? 0, change: 'total', positive: true },
+    { label: 'Guru Baru', value: stats?.totalGuru ?? 0, change: 'total', positive: true },
+    { label: 'Materi Upload', value: stats?.totalMateri ?? 0, change: 'total', positive: true },
+    { label: 'Avg Kehadiran', value: `${stats?.avgKehadiran ?? 0}%`, change: 'avg', positive: true },
   ];
 
   const jurusanStats = stats.siswaPerJurusan || [];

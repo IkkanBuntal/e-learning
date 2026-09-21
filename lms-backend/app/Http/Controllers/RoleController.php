@@ -3,147 +3,129 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\ActivityLog;
 use App\Models\Role;
+use App\Services\CacheService;
 
-/**
- * RoleController — CRUD untuk Role & Permission.
- *
- * Routes (semuanya admin-only):
- *   GET    /api/roles          → index   (list semua role + jumlah user)
- *   GET    /api/roles/{id}     → show
- *   POST   /api/roles          → store
- *   PUT    /api/roles/{id}     → update
- *   DELETE /api/roles/{id}     → destroy
- *
- * Menggunakan withCount() per docs Laravel 13:
- * https://laravel.com/docs/13.x/eloquent-relationships#counting-related-models
- */
 class RoleController extends Controller
 {
     /**
-     * GET /api/roles
-     * Kembalikan semua role beserta jumlah user (withCount) dan permissions.
+     * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // withCount('users') menambah atribut users_count tanpa load seluruh relasi
-        $roles = Role::withCount('users')
-            ->orderBy('id')
-            ->get()
-            ->map(fn($role) => $this->format($role));
+        $query = Role::withCount('users');
+
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('deskripsi', 'like', "%{$search}%");
+            });
+        }
+
+        $roles = $query->get();
 
         return response()->json([
             'status' => 'success',
-            'data'   => $roles,
+            'data' => $roles
         ]);
     }
 
     /**
-     * GET /api/roles/{role}
-     */
-    public function show(Role $role)
-    {
-        $role->loadCount('users');
-
-        return response()->json([
-            'status' => 'success',
-            'data'   => $this->format($role),
-        ]);
-    }
-
-    /**
-     * POST /api/roles
+     * Store a newly created resource in storage.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nama'        => 'required|string|max:50|unique:roles,nama|lowercase',
-            'deskripsi'   => 'nullable|string|max:255',
-            'permissions' => 'nullable|array',
-            'permissions.*' => 'string',
+            'nama' => 'required|string|unique:roles,nama|max:50',
+            'deskripsi' => 'nullable|string'
         ]);
 
         $role = Role::create($validated);
         $role->loadCount('users');
 
-        ActivityLog::log('create', 'Role', $role->nama, "Menambahkan role baru: {$role->nama}");
+        // Clear dashboard cache if needed
+        CacheService::clearPattern(CacheService::PATTERN_DASHBOARD);
 
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Role berhasil ditambahkan',
-            'data'    => $this->format($role),
+            'data' => $role
         ], 201);
     }
 
     /**
-     * PUT /api/roles/{role}
+     * Display the specified resource.
+     */
+    public function show(Role $role)
+    {
+        $role->loadCount('users');
+        $role->load(['users' => function($q) {
+            $q->select('id', 'role_id', 'nama', 'email', 'nip', 'nis', 'aktif')->limit(20);
+        }]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $role
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
      */
     public function update(Request $request, Role $role)
     {
         $validated = $request->validate([
-            'nama'          => 'sometimes|string|max:50|unique:roles,nama,' . $role->id,
-            'deskripsi'     => 'nullable|string|max:255',
-            'permissions'   => 'nullable|array',
-            'permissions.*' => 'string',
+            'nama' => 'string|unique:roles,nama,' . $role->id . '|max:50',
+            'deskripsi' => 'nullable|string'
         ]);
+
+        // Prevent changing core system role names (admin, guru, siswa)
+        $coreRoles = ['admin', 'guru', 'siswa'];
+        if (in_array(strtolower($role->nama), $coreRoles) && isset($validated['nama']) && strtolower($validated['nama']) !== strtolower($role->nama)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Nama role sistem bawaan (admin, guru, siswa) tidak boleh diubah'
+            ], 422);
+        }
 
         $role->update($validated);
         $role->loadCount('users');
 
-        ActivityLog::log('update', 'Role', $role->nama, "Mengubah role: {$role->nama}");
-
         return response()->json([
-            'status'  => 'success',
+            'status' => 'success',
             'message' => 'Role berhasil diperbarui',
-            'data'    => $this->format($role),
+            'data' => $role
         ]);
     }
 
     /**
-     * DELETE /api/roles/{role}
-     * Tidak boleh hapus role 'admin' agar sistem tidak terkunci.
+     * Remove the specified resource from storage.
      */
     public function destroy(Role $role)
     {
-        if (strtolower($role->nama) === 'admin') {
+        // Core roles cannot be deleted
+        $coreRoles = ['admin', 'guru', 'siswa'];
+        if (in_array(strtolower($role->nama), $coreRoles)) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Role admin tidak dapat dihapus',
+                'status' => 'error',
+                'message' => 'Role sistem bawaan (admin, guru, siswa) tidak dapat dihapus'
             ], 422);
         }
 
+        // Roles with users cannot be deleted
         if ($role->users()->count() > 0) {
             return response()->json([
-                'status'  => 'error',
-                'message' => "Role '{$role->nama}' masih memiliki user aktif dan tidak dapat dihapus",
+                'status' => 'error',
+                'message' => 'Role tidak dapat dihapus karena masih memiliki user yang terhubung'
             ], 422);
         }
 
-        ActivityLog::log('delete', 'Role', $role->nama, "Menghapus role: {$role->nama}");
         $role->delete();
 
         return response()->json([
-            'status'  => 'success',
-            'message' => 'Role berhasil dihapus',
+            'status' => 'success',
+            'message' => 'Role berhasil dihapus'
         ]);
-    }
-
-    // ─── Helper ──────────────────────────────────────────────────────────────
-
-    /**
-     * Format role untuk response API agar sesuai dengan struktur
-     * yang dipakai oleh frontend Roles.jsx.
-     */
-    private function format(Role $role): array
-    {
-        return [
-            'id'          => $role->id,
-            'name'        => $role->nama,
-            'displayName' => ucfirst($role->nama),
-            'description' => $role->deskripsi ?? '',
-            'userCount'   => $role->users_count ?? 0,
-            'permissions' => $role->permissions ?? [],
-        ];
     }
 }

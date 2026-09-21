@@ -37,11 +37,12 @@ const LaporanSiswa = () => {
           kelas: filters.kelas,
           search: filters.search
         });
-        if (res.data) {
-          setLaporanData(res.data);
-        }
+        const rawData = res?.data || res || [];
+        const dataArray = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.data) ? rawData.data : Object.values(rawData || {}));
+        setLaporanData(dataArray);
       } catch (error) {
         console.error('Error fetching laporan:', error);
+        setLaporanData([]);
       } finally {
         setLoading(false);
       }
@@ -50,19 +51,21 @@ const LaporanSiswa = () => {
     fetchData();
   }, [filters.jurusan, filters.kelas, filters.search]);
 
-  const avgNilaiAll = laporanData.length > 0
-    ? Math.round((laporanData.reduce((sum, s) => sum + s.avgNilai, 0) / laporanData.length) * 10) / 10
+  const validData = Array.isArray(laporanData) ? laporanData : [];
+
+  const avgNilaiAll = validData.length > 0
+    ? Math.round((validData.reduce((sum, s) => sum + (Number(s.avgNilai) || 0), 0) / validData.length) * 10) / 10
     : 0;
-  const avgKehadiranAll = laporanData.length > 0
-    ? Math.round((laporanData.reduce((sum, s) => sum + s.kehadiran, 0) / laporanData.length) * 10) / 10
+  const avgKehadiranAll = validData.length > 0
+    ? Math.round((validData.reduce((sum, s) => sum + (Number(s.kehadiran) || 0), 0) / validData.length) * 10) / 10
     : 0;
-  const tugasOnTimePct = laporanData.length > 0 && laporanData[0].totalTugas > 0
-    ? Math.round((laporanData.reduce((sum, s) => sum + s.tugasSelesai, 0) /
-        laporanData.reduce((sum, s) => sum + Math.max(s.totalTugas, 1), 0)) * 100)
+  const totalTugasExpected = validData.reduce((sum, s) => sum + Math.max(Number(s.totalTugas) || 0, 1), 0);
+  const tugasOnTimePct = validData.length > 0 && totalTugasExpected > 0
+    ? Math.round((validData.reduce((sum, s) => sum + (Number(s.tugasSelesai) || 0), 0) / totalTugasExpected) * 100)
     : 0;
 
   const summary = {
-    totalSiswa: laporanData.length,
+    totalSiswa: validData.length,
     avgKehadiran: avgKehadiranAll,
     avgNilai: avgNilaiAll,
     tugasOnTime: tugasOnTimePct,
@@ -71,14 +74,14 @@ const LaporanSiswa = () => {
   const summaryStats = [
     {
       title: 'Total Siswa',
-      value: summary.totalSiswa.toString(),
+      value: String(summary.totalSiswa ?? 0),
       icon: Users,
       iconBgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
     },
     {
       title: 'Avg Kehadiran',
-      value: `${summary.avgKehadiran}%`,
+      value: `${summary.avgKehadiran ?? 0}%`,
       icon: CheckCircle,
       iconBgColor: 'bg-green-100',
       iconColor: 'text-green-600',
@@ -87,7 +90,7 @@ const LaporanSiswa = () => {
     },
     {
       title: 'Avg Nilai',
-      value: summary.avgNilai.toString(),
+      value: String(summary.avgNilai ?? 0),
       icon: FileText,
       iconBgColor: 'bg-purple-100',
       iconColor: 'text-purple-600',
@@ -96,7 +99,7 @@ const LaporanSiswa = () => {
     },
     {
       title: 'Tugas Tepat Waktu',
-      value: `${summary.tugasOnTime}%`,
+      value: `${summary.tugasOnTime ?? 0}%`,
       icon: Calendar,
       iconBgColor: 'bg-yellow-100',
       iconColor: 'text-yellow-600',
@@ -208,55 +211,63 @@ const LaporanSiswa = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {laporanData.map((siswa) => (
-                <tr key={siswa.id} className="hover:bg-gray-50">
-                  <td className="py-4 px-4 text-sm font-medium text-gray-900">{siswa.nis}</td>
-                  <td className="py-4 px-4 text-sm text-gray-900">{siswa.nama}</td>
-                  <td className="py-4 px-4 text-center">
-                    <Badge variant="secondary" size="sm">{siswa.kelas}</Badge>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <Badge variant="primary" size="sm">{siswa.jurusan}</Badge>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className={`font-semibold ${
-                      siswa.avgNilai >= 85 ? 'text-green-600' :
-                      siswa.avgNilai >= 75 ? 'text-blue-600' :
-                      siswa.avgNilai >= 65 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {siswa.avgNilai}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className={`font-semibold ${
-                      siswa.kehadiran >= 90 ? 'text-green-600' :
-                      siswa.kehadiran >= 80 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {siswa.kehadiran}%
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-center text-sm text-gray-600">
-                    {siswa.tugasSelesai}/{siswa.totalTugas}
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <Badge 
-                      variant={siswa.ranking <= 3 ? 'success' : siswa.ranking <= 10 ? 'info' : 'secondary'}
-                      size="sm"
-                    >
-                      #{siswa.ranking}
-                    </Badge>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    {siswa.trend === 'up' ? (
-                      <TrendingUp className="w-5 h-5 text-green-600 mx-auto" />
-                    ) : (
-                      <TrendingDown className="w-5 h-5 text-red-600 mx-auto" />
-                    )}
+              {validData.length === 0 ? (
+                <tr>
+                  <td colSpan="9" className="py-8 text-center text-gray-500">
+                    Tidak ada data siswa yang cocok dengan filter
                   </td>
                 </tr>
-              ))}
+              ) : (
+                validData.map((siswa) => (
+                  <tr key={siswa.id} className="hover:bg-gray-50">
+                    <td className="py-4 px-4 text-sm font-medium text-gray-900">{siswa.nis}</td>
+                    <td className="py-4 px-4 text-sm text-gray-900">{siswa.nama}</td>
+                    <td className="py-4 px-4 text-center">
+                      <Badge variant="secondary" size="sm">{siswa.kelas}</Badge>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <Badge variant="primary" size="sm">{siswa.jurusan}</Badge>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className={`font-semibold ${
+                        siswa.avgNilai >= 85 ? 'text-green-600' :
+                        siswa.avgNilai >= 75 ? 'text-blue-600' :
+                        siswa.avgNilai >= 65 ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {siswa.avgNilai}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className={`font-semibold ${
+                        siswa.kehadiran >= 90 ? 'text-green-600' :
+                        siswa.kehadiran >= 80 ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {siswa.kehadiran}%
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center text-sm text-gray-600">
+                      {siswa.tugasSelesai}/{siswa.totalTugas}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <Badge 
+                        variant={siswa.ranking <= 3 ? 'success' : siswa.ranking <= 10 ? 'info' : 'secondary'}
+                        size="sm"
+                      >
+                        #{siswa.ranking}
+                      </Badge>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      {siswa.trend === 'up' ? (
+                        <TrendingUp className="w-5 h-5 text-green-600 mx-auto" />
+                      ) : (
+                        <TrendingDown className="w-5 h-5 text-red-600 mx-auto" />
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -66,14 +66,14 @@ const UserForm = ({ user = null, onSubmit, onCancel, loading = false }) => {
         password: '', // Don't populate password in edit mode
         role: user.role || 'siswa',
         nip: user.nip || '',
-        phone: user.phone || '',
+        phone: user.no_telp || user.phone || '',
         nis: user.nis || '',
         kelas_id: user.kelas_id || '',
-        parent_phone: user.parent_phone || '',
-        gender: user.gender || '',
-        birth_date: user.birth_date || '',
-        address: user.address || '',
-        is_active: user.is_active !== undefined ? user.is_active : true,
+        parent_phone: user.no_telp || user.parent_phone || '',
+        gender: user.jenis_kelamin || user.gender || '',
+        birth_date: user.tanggal_lahir || user.birth_date || '',
+        address: user.alamat || user.address || '',
+        is_active: user.aktif !== undefined ? !!user.aktif : (user.is_active !== undefined ? user.is_active : true),
       });
     }
   }, [user]);

@@ -83,6 +83,12 @@ const Users = () => {
             kelas_id: u.kelas_id || null,
             status: u.aktif ? 'active' : 'inactive',
             foto: u.foto || null,
+            // Additional fields for edit form
+            no_telp: u.no_telp || null,
+            alamat: u.alamat || null,
+            jenis_kelamin: u.jenis_kelamin || null,
+            tanggal_lahir: u.tanggal_lahir ? u.tanggal_lahir.split('T')[0] : null,
+            aktif: u.aktif,
           })));
           
           // Update pagination state
@@ -111,6 +117,12 @@ const Users = () => {
             kelas_id: u.kelas_id || null,
             status: u.aktif ? 'active' : 'inactive',
             foto: u.foto || null,
+            // Additional fields for edit form
+            no_telp: u.no_telp || null,
+            alamat: u.alamat || null,
+            jenis_kelamin: u.jenis_kelamin || null,
+            tanggal_lahir: u.tanggal_lahir ? u.tanggal_lahir.split('T')[0] : null,
+            aktif: u.aktif,
           })));
           
           // No pagination
