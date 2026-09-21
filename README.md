@@ -369,9 +369,43 @@ This project is licensed under the MIT License.
 
 ## 📝 Changelog
 
-### Latest Updates (2026-07-06)
+### [2026-09-21] - Session Fixes & Improvements
+
+#### 🐛 Bug Fixes
+- ✅ **Edit User Form**: Fixed field `tanggal_lahir`, `alamat`, `no_telp`, `jenis_kelamin` tidak muncul saat edit user — diperbaiki di `Users.jsx` (state mapping) dan `UserForm.jsx` (field name mapping backend↔frontend)
+- ✅ **Aktivitas Terkini Dashboard**: Fixed aktivitas selalu kosong — dihapus filter `dateRange` dari `getRecentActivities()`, sekarang selalu tampil 10 aktivitas terbaru tanpa filter periode
+- ✅ **Dashboard Cache**: Fixed aktivitas tidak update setelah tambah/edit/hapus user — ditambahkan `CacheService::clearDashboardCache()` di `UserController` (store/update/destroy) dan TTL cache dikurangi dari 300s → 30s
+- ✅ **Dashboard Action Buttons**: Fixed tombol "Tambah User", "Tambah Jurusan", "Tambah Kelas", "Atur Jadwal", "Lihat Log Sistem", dan "Lihat Detail Statistik" yang tidak berfungsi — ditambahkan `useNavigate` dan handler navigasi
+- ✅ **getRecentActivities**: Fixed query `$recentUsers` yang terpotong saat resolve merge conflict
+
+#### ✨ New Files
+- 📄 `ProfileController.php` — Controller untuk GET/PUT profil user yang sedang login (semua role)
+- 📄 `RoleController.php` — Controller CRUD untuk manajemen role
+- 📄 `AbsensiSeeder.php` — Seeder data absensi
+- 📄 `MateriSeeder.php` — Seeder data materi pembelajaran
+- 📄 `NilaiSeeder.php` — Seeder data nilai siswa
+- 📄 `PengumpulanTugasSeeder.php` — Seeder data pengumpulan tugas
+- 📄 `PengumumanSeeder.php` — Seeder data pengumuman
+- 📄 `TugasSeeder.php` — Seeder data tugas
+- 📄 `pengumumanService.js` — Service frontend untuk API pengumuman
+- 📄 `roleService.js` — Service frontend untuk API role
+
+#### 🔧 Technical Changes
+- **Backend**:
+  - `DashboardController.php`: Cache TTL dashboard dikurangi ke 30 detik, `getRecentActivities()` tidak lagi bergantung pada `ActivityLog` model — query langsung ke tabel `users`, `materi`, `tugas`, `pengumpulan_tugas`, `nilai`
+  - `UserController.php`: Ditambahkan `CacheService::clearDashboardCache()` pada setiap operasi CRUD
+  - `ProfileController.php`: Support update foto profil, `changePassword` endpoint terpisah
+- **Frontend**:
+  - `Users.jsx`: State mapping diperluas dengan field `no_telp`, `alamat`, `jenis_kelamin`, `tanggal_lahir`, `foto`, `aktif`
+  - `UserForm.jsx`: Field mapping edit mode diperbaiki (nama field backend → frontend)
+  - `Dashboard.jsx`: Ditambahkan navigasi ke semua tombol aksi cepat
+
+---
+
+### [2026-07-06] - Kelas & Wali Kelas Fixes
 
 #### 🔧 Bug Fixes & Improvements
+- ✅ **Filter Tingkatan Kelas**: Fixed filter tingkatan (X, XI, XII) yang tidak menampilkan hasil
 - ✅ **Filter Tingkatan Kelas**: Fixed filter tingkatan (X, XI, XII) yang tidak menampilkan hasil
 - ✅ **Wali Kelas Management**: 
   - Fixed wali kelas tidak muncul di tabel kelas
