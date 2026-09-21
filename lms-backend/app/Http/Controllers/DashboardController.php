@@ -508,6 +508,20 @@ class DashboardController extends Controller
         
         // Recent users (last 5)
         $recentUsers = User::with('role')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
+        foreach ($recentUsers as $user) {
+            $activities[] = [
+                'type' => 'create',
+                'user' => 'Admin',
+                'action' => 'menambahkan user baru',
+                'target' => $user->nama,
+                'time' => $this->timeAgo($user->created_at),
+                'timestamp' => $user->created_at->timestamp
+            ];
+        }
         
         // Recent materi (last 5)
         $recentMateri = Materi::with(['guru', 'mataPelajaran'])
