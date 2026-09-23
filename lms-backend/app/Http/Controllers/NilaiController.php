@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Nilai;
+use App\Models\ActivityLog;
 
 class NilaiController extends Controller
 {
@@ -59,6 +60,9 @@ class NilaiController extends Controller
 
         $nilai = Nilai::create($validated);
         $nilai->load(['siswa', 'guru', 'mataPelajaran', 'kelas']);
+
+        $siswaNama = $nilai->siswa->nama ?? 'siswa';
+        ActivityLog::log('create', 'Nilai', $siswaNama, 'Menginput nilai siswa');
 
         return response()->json([
             'status' => 'success',
@@ -145,6 +149,9 @@ class NilaiController extends Controller
         $nilai->update($validated);
         $nilai->load(['siswa', 'guru', 'mataPelajaran', 'kelas']);
 
+        $siswaNama = $nilai->siswa->nama ?? 'siswa';
+        ActivityLog::log('update', 'Nilai', $siswaNama, 'Mengubah nilai siswa');
+
         return response()->json([
             'status' => 'success',
             'message' => 'Nilai berhasil diperbarui',
@@ -157,6 +164,8 @@ class NilaiController extends Controller
      */
     public function destroy(Nilai $nilai)
     {
+        $siswaNama = $nilai->siswa->nama ?? 'siswa';
+        ActivityLog::log('delete', 'Nilai', $siswaNama, 'Menghapus nilai siswa');
         $nilai->delete();
         return response()->json([
             'status' => 'success',

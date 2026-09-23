@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Tugas;
+use App\Models\ActivityLog;
 
 class TugasController extends Controller
 {
@@ -63,6 +64,8 @@ class TugasController extends Controller
         $tugas = Tugas::create($data);
         $tugas->load(['guru', 'mataPelajaran', 'kelas']);
 
+        ActivityLog::log('create', 'Tugas', $tugas->judul, 'Membuat tugas baru');
+
         return response()->json([
             'status' => 'success',
             'message' => 'Tugas berhasil ditambahkan',
@@ -119,6 +122,8 @@ class TugasController extends Controller
         $tugas->update($data);
         $tugas->load(['guru', 'mataPelajaran', 'kelas']);
 
+        ActivityLog::log('update', 'Tugas', $tugas->judul, 'Mengubah tugas');
+
         return response()->json([
             'status' => 'success',
             'message' => 'Tugas berhasil diperbarui',
@@ -136,6 +141,7 @@ class TugasController extends Controller
             Storage::disk('public')->delete($tugas->file_path);
         }
 
+        ActivityLog::log('delete', 'Tugas', $tugas->judul, 'Menghapus tugas');
         $tugas->delete();
         return response()->json([
             'status' => 'success',

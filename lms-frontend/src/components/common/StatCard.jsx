@@ -32,26 +32,26 @@ const StatCard = ({
           <p className="text-sm font-medium text-gray-500 mb-1 truncate">{title}</p>
           <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
 
-          {/* Trend */}
-          {trend !== undefined && (
+          {/* Trend / subtitle */}
+          {(trend !== undefined || trendLabel) && (
             <div className="flex items-center gap-1">
-              {isPositiveTrend && (
+              {trend !== undefined && isPositiveTrend && (
                 <>
                   <TrendingUp className="w-4 h-4 text-green-500" />
                   <span className="text-sm font-medium text-green-600">+{trend}%</span>
                 </>
               )}
-              {isNegativeTrend && (
+              {trend !== undefined && isNegativeTrend && (
                 <>
                   <TrendingDown className="w-4 h-4 text-red-500" />
                   <span className="text-sm font-medium text-red-600">{trend}%</span>
                 </>
               )}
-              {!isPositiveTrend && !isNegativeTrend && (
+              {trend !== undefined && !isPositiveTrend && !isNegativeTrend && (
                 <span className="text-sm font-medium text-gray-400">—</span>
               )}
               {trendLabel && (
-                <span className="text-xs text-gray-400 ml-1">{trendLabel}</span>
+                <span className="text-xs text-gray-400">{trendLabel}</span>
               )}
             </div>
           )}

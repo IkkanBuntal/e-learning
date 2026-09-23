@@ -20,9 +20,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CacheController;
 use App\Http\Controllers\HealthController;
-use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SearchController;
-use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Pengumuman;
+use App\Models\ActivityLog;
 
 class PengumumanController extends Controller
 {
@@ -36,6 +37,8 @@ class PengumumanController extends Controller
 
         $pengumuman = Pengumuman::create($validated);
         $pengumuman->load('admin');
+
+        ActivityLog::log('create', 'Pengumuman', $pengumuman->judul, 'Membuat pengumuman baru');
 
         return response()->json([
             'status' => 'success',
@@ -71,6 +74,8 @@ class PengumumanController extends Controller
         $pengumuman->update($validated);
         $pengumuman->load('admin');
 
+        ActivityLog::log('update', 'Pengumuman', $pengumuman->judul, 'Mengubah pengumuman');
+
         return response()->json([
             'status' => 'success',
             'message' => 'Pengumuman berhasil diperbarui',
@@ -83,6 +88,7 @@ class PengumumanController extends Controller
      */
     public function destroy(Pengumuman $pengumuman)
     {
+        ActivityLog::log('delete', 'Pengumuman', $pengumuman->judul, 'Menghapus pengumuman');
         $pengumuman->delete();
         return response()->json([
             'status' => 'success',

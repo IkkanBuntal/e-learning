@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Materi;
+use App\Models\ActivityLog;
 
 class MateriController extends Controller
 {
@@ -67,6 +68,8 @@ class MateriController extends Controller
         $materi = Materi::create($data);
         $materi->load(['guru', 'mataPelajaran', 'kelas']);
 
+        ActivityLog::log('upload', 'Materi', $materi->judul, 'Mengupload materi baru');
+
         return response()->json([
             'status' => 'success',
             'message' => 'Materi berhasil ditambahkan',
@@ -122,6 +125,8 @@ class MateriController extends Controller
         $materi->update($data);
         $materi->load(['guru', 'mataPelajaran', 'kelas']);
 
+        ActivityLog::log('update', 'Materi', $materi->judul, 'Mengubah materi');
+
         return response()->json([
             'status' => 'success',
             'message' => 'Materi berhasil diperbarui',
@@ -139,6 +144,7 @@ class MateriController extends Controller
             Storage::disk('public')->delete($materi->file_path);
         }
 
+        ActivityLog::log('delete', 'Materi', $materi->judul, 'Menghapus materi');
         $materi->delete();
         return response()->json([
             'status' => 'success',

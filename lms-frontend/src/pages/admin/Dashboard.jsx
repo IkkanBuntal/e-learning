@@ -35,6 +35,17 @@ import {
 import dashboardService from '../../services/dashboardService';
 import api from '../../services/api';
 
+// ─── Client-side timeAgo (real-time, no stale strings from server) ────────────
+const timeAgo = (isoString) => {
+  if (!isoString) return '';
+  const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+  if (diff < 60)        return 'Baru saja';
+  if (diff < 3600)      return `${Math.floor(diff / 60)} menit yang lalu`;
+  if (diff < 86400)     return `${Math.floor(diff / 3600)} jam yang lalu`;
+  if (diff < 604800)    return `${Math.floor(diff / 86400)} hari yang lalu`;
+  return new Date(isoString).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 // ─── Health check helper ──────────────────────────────────────────────────────
 const fetchHealth = async () => {
   const start = performance.now();
@@ -64,6 +75,8 @@ const AdminDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Tick every 60s so timeAgo labels re-render in real-time
+  const [, setTick] = useState(0);
 
   // --- Health state ---
   const [health, setHealth] = useState(null);
@@ -86,6 +99,12 @@ const AdminDashboard = () => {
     healthTimerRef.current = setInterval(() => doHealthCheck(), 30_000);
     return () => clearInterval(healthTimerRef.current);
   }, [doHealthCheck]);
+
+  // Tick every 60s to keep timeAgo labels fresh
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
   // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -213,8 +232,6 @@ const AdminDashboard = () => {
       icon: Users,
       iconBgColor: 'bg-blue-100',
       iconColor: 'text-blue-600',
-      trend: 0,
-      trendLabel: '',
     },
     {
       title: 'Total Guru',
@@ -222,8 +239,7 @@ const AdminDashboard = () => {
       icon: GraduationCap,
       iconBgColor: 'bg-green-100',
       iconColor: 'text-green-600',
-      trend: 0,
-      trendLabel: 'aktif mengajar',
+      trendLabel: `${dashboardData.guruAktif ?? 0} aktif mengajar`,
     },
     {
       title: 'Total Siswa',
@@ -231,8 +247,7 @@ const AdminDashboard = () => {
       icon: Users,
       iconBgColor: 'bg-yellow-100',
       iconColor: 'text-yellow-600',
-      trend: 0,
-      trendLabel: 'terdaftar',
+      trendLabel: `${dashboardData.totalSiswa ?? 0} terdaftar`,
     },
     {
       title: 'Total Kelas',
@@ -240,8 +255,7 @@ const AdminDashboard = () => {
       icon: BookOpen,
       iconBgColor: 'bg-purple-100',
       iconColor: 'text-purple-600',
-      trend: 0,
-      trendLabel: 'aktif',
+      trendLabel: `${dashboardData.kelasAktif ?? 0} aktif`,
     },
   ];
 
@@ -265,17 +279,17 @@ const AdminDashboard = () => {
         subtitle="Overview dan statistik sistem LMS"
         actions={
           <div className="flex gap-2">
-            {['today', 'week', 'month', 'year'].map((period) => (
+            {[{ key: 'today', label: 'Hari Ini' }, { key: 'week', label: 'Minggu Ini' }, { key: 'month', label: 'Bulan Ini' }, { key: 'year', label: 'Tahun Ini' }].map(({ key, label }) => (
               <button
-                key={period}
-                onClick={() => setSelectedPeriod(period)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
-                  selectedPeriod === period
+                key={key}
+                onClick={() => setSelectedPeriod(key)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  selectedPeriod === key
                     ? 'bg-primary text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {period}
+                {label}
               </button>
             ))}
           </div>
@@ -415,7 +429,7 @@ const AdminDashboard = () => {
                         {' '}{activity.action}{' '}
                         <span className="font-medium text-primary">{activity.target}</span>
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">{activity.time}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{timeAgo(activity.created_at)}</p>
                     </div>
                   </div>
                 );

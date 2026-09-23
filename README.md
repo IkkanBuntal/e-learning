@@ -59,10 +59,10 @@ Sistem ini terdiri dari:
 ## 📦 Instalasi
 
 ### Prerequisites
-- PHP >= 8.3
+- PHP >= 8.2 (disarankan PHP 8.3 dengan ekstensi `fileinfo`, `pdo_mysql` / `pdo_sqlite`, `openssl`, `mbstring` aktif)
 - Composer
-- Node.js >= 18
-- NPM atau Yarn
+- Node.js >= 18 & NPM / Yarn
+- MySQL 8.0+ atau SQLite
 - Redis (Optional, untuk cache optimization)
 
 ### 1. Clone Repository
@@ -162,15 +162,17 @@ copy .env.example .env
 # Generate application key
 php artisan key:generate
 
-# Konfigurasi .env sesuai kebutuhan
-# Edit CACHE_DRIVER, DB settings, dll
+# Konfigurasi .env sesuai database Anda (MySQL / SQLite)
+# Pastikan ekstensi fileinfo aktif di php.ini: extension=fileinfo
 
-# Run migrations & seeders
-php artisan migrate --seed
+# Buat symbolic link untuk public storage (avatar & file upload)
+php artisan storage:link
 
-# Clear & optimize cache (jika menggunakan Redis)
+# Run migrations & seeders lengkap
+php artisan migrate:fresh --seed
+
+# Clear cache
 php artisan cache:clear
-php artisan config:cache
 
 # Start development server
 php artisan serve
@@ -196,21 +198,23 @@ Frontend akan berjalan di: **http://localhost:3000**
 
 ### Admin
 ```
-Email: admin@smkn2kuningan.sch.id
+Email: admin@sekolah.sch.id
 Password: password
 ```
 
 ### Guru
 ```
-Email: guru1@smkn2kuningan.sch.id
+Email: budi.santoso@sekolah.sch.id
 Password: password
 ```
+*(Atau guru lain: siti.rahayu@sekolah.sch.id, ahmad.fauzi@sekolah.sch.id, dewi.lestari@sekolah.sch.id, hendra.wijaya@sekolah.sch.id)*
 
 ### Siswa
 ```
-Email: siswa1@smkn2kuningan.sch.id
+Email: andi.pratama@siswa.sch.id
 Password: password
 ```
+*(Atau siswa lain: bella.safitri@siswa.sch.id, cahya.ramadhan@siswa.sch.id, dina.kusumawati@siswa.sch.id, eko.prasetyo@siswa.sch.id, fitri.handayani@siswa.sch.id)*
 
 ## 📁 Struktur Project
 
@@ -368,6 +372,16 @@ This project is licensed under the MIT License.
 - **Developer**: Raditya
 
 ## 📝 Changelog
+
+### [2026-09-23] - Dashboard Subtitles, Seeder Sync & Profile Photo Fixes
+
+#### 🐛 Bug Fixes & Improvements
+- ✅ **StatCard Subtitles**: Memperbaiki label subtitle di Dashboard Admin yang sebelumnya menampilkan tanda strip (`—`). `StatCard` kini dapat menampilkan `trendLabel` secara independen tanpa memerlukan nilai `trend`.
+- ✅ **Dashboard Active Metrics**: Menambahkan data `guruAktif` (guru dengan jadwal mengajar aktif) dan `kelasAktif` (kelas berstatus aktif) di `DashboardController@generateDashboardStats` agar statistik menampilkan angka real dari database.
+- ✅ **Profile Photo Upload (`fileinfo`)**: Mengaktifkan ekstensi `fileinfo` di `php.ini` dan memastikan symlink `php artisan storage:link` terhubung, sehingga validasi tipe file gambar dan upload avatar foto profil berjalan normal tanpa error 500 (`Unable to guess MIME type`).
+- ✅ **Seeder Synchronization**: Menjalankan ulang seluruh seeder database (`migrate:fresh --seed`) untuk memuat data master (Roles, Jurusan, Kelas, Mapel, Guru, Siswa, Jadwal, Materi, Tugas, Nilai, Absensi, Pengumuman) secara lengkap dan konsisten.
+- ✅ **Cache Invalidation on Mutation**: Memastikan `MateriController`, `TugasController`, `NilaiController`, `PengumumanController`, dan `UserController` membersihkan dashboard cache saat ada aksi create, update, atau delete.
+- ✅ **Documentation Update**: Memperbarui kredensial akun default login dan panduan instalasi pada `README.md`.
 
 ### [2026-09-21] - Session Fixes & Improvements
 

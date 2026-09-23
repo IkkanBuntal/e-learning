@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use App\Models\ActivityLog;
 use App\Services\CacheService;
 
 class UserController extends Controller
@@ -73,8 +74,8 @@ class UserController extends Controller
         $user = User::create($validated);
         $user->load(['role', 'kelas']);
 
-        // Clear dashboard cache so recent activities update immediately
-        CacheService::clearDashboardCache();
+        $roleName = $user->role->nama ?? 'user';
+        ActivityLog::log('create', 'User', $user->nama, "Menambahkan {$roleName} baru");
 
         return response()->json([
             'status' => 'success',
@@ -123,8 +124,7 @@ class UserController extends Controller
         $user->update($validated);
         $user->load(['role', 'kelas']);
 
-        // Clear dashboard cache so recent activities update immediately
-        CacheService::clearDashboardCache();
+        ActivityLog::log('update', 'User', $user->nama, 'Mengubah data user');
 
         return response()->json([
             'status' => 'success',
@@ -138,10 +138,8 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
+        ActivityLog::log('delete', 'User', $user->nama, 'Menghapus user');
         $user->delete();
-
-        // Clear dashboard cache so recent activities update immediately
-        CacheService::clearDashboardCache();
 
         return response()->json([
             'status' => 'success',
