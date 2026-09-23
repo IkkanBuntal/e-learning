@@ -17,13 +17,13 @@ import {
   Target,
   Activity
 } from 'lucide-react';
-import { authService } from '../../services/authService';
+import { useAuth } from '../../hooks/useAuth';
 import dashboardService from '../../services/dashboardService';
 
 const SiswaDashboard = () => {
+  const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [dashboardData, setDashboardData] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,17 +32,6 @@ const SiswaDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        
-        // Get current user from localStorage
-        const user = authService.getCurrentUser();
-        
-        if (!isMounted) return;
-        setCurrentUser(user);
-
-        if (!user || user.role?.nama !== 'siswa') {
-          if (isMounted) setLoading(false);
-          return;
-        }
 
         const res = await dashboardService.getStats(selectedPeriod);
         
@@ -86,7 +75,7 @@ const SiswaDashboard = () => {
     };
   }, [selectedPeriod]); // Re-fetch when period changes
 
-  if (loading || !dashboardData || !currentUser) {
+  if (loading || !dashboardData) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -143,8 +132,6 @@ const SiswaDashboard = () => {
       icon: BarChart3,
       iconBgColor: 'bg-purple-100',
       iconColor: 'text-purple-600',
-      trend: 0,
-      trendLabel: '',
     },
   ];
 
@@ -152,7 +139,7 @@ const SiswaDashboard = () => {
     <div className="space-y-6">
       <PageHeader
         title="Dashboard Siswa"
-        subtitle={`Selamat datang, ${currentUser.name}${currentUser.kelas ? ` — ${currentUser.kelas.nama}` : ''}`}
+        subtitle={`Selamat datang, ${user?.name || 'Siswa'}${user?.kelas ? ` — ${user.kelas.nama}` : ''}`}
         actions={
           <div className="flex gap-2">
             {['today', 'week', 'month', 'year'].map((period) => (

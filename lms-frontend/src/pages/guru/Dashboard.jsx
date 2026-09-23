@@ -16,14 +16,14 @@ import {
   BarChart3,
   FileText
 } from 'lucide-react';
-import { authService } from '../../services/authService';
+import { useAuth } from '../../hooks/useAuth';
 import dashboardService from '../../services/dashboardService';
 
 const GuruDashboard = () => {
+  const { user } = useAuth();
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [dashboardData, setDashboardData] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,17 +32,6 @@ const GuruDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        
-        // Get current user from localStorage
-        const user = authService.getCurrentUser();
-        
-        if (!isMounted) return;
-        setCurrentUser(user);
-
-        if (!user || user.role?.nama !== 'guru') {
-          if (isMounted) setLoading(false);
-          return;
-        }
 
         const res = await dashboardService.getStats(selectedPeriod);
         
@@ -85,7 +74,7 @@ const GuruDashboard = () => {
     };
   }, [selectedPeriod]); // Re-fetch when period changes
 
-  if (loading || !dashboardData || !currentUser) {
+  if (loading || !dashboardData) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -137,7 +126,7 @@ const GuruDashboard = () => {
     <div className="space-y-6">
       <PageHeader
         title="Dashboard Guru"
-        subtitle={`Selamat datang, ${currentUser.name} — Kelola materi, tugas, dan penilaian siswa`}
+        subtitle={`Selamat datang, ${user?.name || 'Guru'} — Kelola materi, tugas, dan penilaian siswa`}
         actions={
           <div className="flex gap-2">
             {['today', 'week', 'month', 'year'].map((period) => (

@@ -66,6 +66,14 @@ class Tugas extends Model
     }
 
     /**
+     * Alias for pengumpulan relationship
+     */
+    public function pengumpulanTugas(): HasMany
+    {
+        return $this->hasMany(PengumpulanTugas::class);
+    }
+
+    /**
      * Check if tugas is overdue
      */
     public function isOverdue(): bool
